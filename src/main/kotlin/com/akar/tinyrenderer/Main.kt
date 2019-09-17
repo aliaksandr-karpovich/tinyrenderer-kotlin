@@ -7,6 +7,8 @@ import kotlin.math.abs
 
 fun main() {
     val image = IJ.createImage("result", "RGB", 1024, 1024, 1)
+    image.processor.setColor(Color.BLACK.rgb)
+    image.processor.fill()
 
     val model = parseObj("/obj/african_head/african_head.obj")
 
@@ -18,15 +20,20 @@ fun main() {
     }
 
     model.triangles.forEach {
-        for (i in 0..2) {
-            image.line(model.vertices[it[i]][0].toInt(), model.vertices[it[i]][1].toInt(),
-                    model.vertices[it[(i + 1) % 3]][0].toInt(), model.vertices[it[(i + 1) % 3]][1].toInt(),
-                    Color.RED.rgb)
+
+        val v0 = model.vertices[it[0]]
+        val v1 = model.vertices[it[1]]
+        val v2 = model.vertices[it[2]]
+
+        val side1 = v1 - v0
+        val side2 = v2 - v0
+        val intensity = side1.cross(side2).normalize().scalar(Vec3D(0.0, 0.0, 1.0)).toFloat()
+        if ( intensity > 0) {
+            val color = Color(intensity, intensity  , intensity).rgb
+            image.triangle(v0.toInt(), v1.toInt(), v2.toInt(), color)
         }
     }
 
-
-    image.line(0, 0, 550, 135, Color.RED.rgb)
     IJ.saveAs(image, "png", "result")
 }
 
@@ -64,4 +71,31 @@ fun ImagePlus.line(x0: Int, y0: Int, x1: Int, y1: Int, color: Int) {
             error2 -= dx * 2
         }
     }
+}
+
+fun ImagePlus.triangle(v0: Vec3I, v1: Vec3I, v2: Vec3I, color: Int) {
+    val xes = intArrayOf(v0.x, v1.x, v2.x)
+    val xmin = xes.min()!!
+    val xmax = xes.max()!!
+
+    val ys = intArrayOf(v0.y, v1.y, v2.y)
+    val ymin = ys.min()!!
+    val ymax = ys.max()!!
+
+    for (x in xmin..xmax) {
+        for (y in ymin..ymax) {
+            val bary = barycentric(Vec3I(x, y, 0), v0, v1, v2)
+            if (bary.x < 0 || bary.y < 0 || bary.z < 0) continue
+            this.processor[x, y] = color
+        }
+    }
+
+}
+
+fun barycentric(v0: Vec3I, v1: Vec3I, v2: Vec3I, v3: Vec3I): Vec3D {
+    val denominator = ((v2.y - v3.y) * (v1.x - v3.x) + (v3.x - v2.x) * (v1.y - v3.y))
+    val l0 = ((v2.y - v3.y) * (v0.x - v3.x) + (v3.x - v2.x) * (v0.y - v3.y)).toDouble() / denominator
+    val l1 = ((v3.y - v1.y) * (v0.x - v3.x) + (v1.x - v3.x) * (v0.y - v3.y)).toDouble() / denominator
+    val l2 = 1 - l0 - l1
+    return Vec3D(l0, l1, l2)
 }
