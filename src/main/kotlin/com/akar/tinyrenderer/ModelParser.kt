@@ -2,35 +2,14 @@ package com.akar.tinyrenderer
 
 import java.io.InputStreamReader
 
-
 class Model {
-    val vertices = mutableListOf<Vector3<Double>>()
-    var triangles = mutableListOf<Vector3<Int>>()
+    val vertices = mutableListOf<Vec3D>()
+    var triangles = mutableListOf<Vec3I>()
 
-    var tVertices = mutableListOf<Vector3<Double>>()
-    var tTriangles = mutableListOf<Vector3<Int>>()
+    var tVertices = mutableListOf<Vec3D>()
+    var tTriangles = mutableListOf<Vec3I>()
 
 }
-
-class Vector3<T : Number>(var x: T, var y: T, var z: T) {
-    operator fun get(i: Int): T =
-            when (i) {
-                0 -> x
-                1 -> y
-                2 -> z
-                else -> throw IllegalArgumentException("must be in 0..2")
-            }
-
-    operator fun set(i: Int, value: T) {
-        when (i) {
-            0 -> x = value
-            1 -> y = value
-            2 -> z = value
-            else -> throw IllegalArgumentException("must be in 0..2")
-        }
-    }
-}
-
 
 fun parseObj(fileName: String): Model {
     val result = Model()
