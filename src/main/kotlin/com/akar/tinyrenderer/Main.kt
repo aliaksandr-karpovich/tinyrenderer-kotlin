@@ -5,35 +5,37 @@ import ij.ImagePlus
 import java.awt.Color
 import kotlin.math.abs
 
+const val IMAGE_WIDTH = 2048
+const val IMAGE_HEIGHT = 2048
+
 fun main() {
-    val image = IJ.createImage("result", "RGB", 1024, 1024, 1)
+
+    val image = IJ.createImage("result", "RGB", IMAGE_WIDTH, IMAGE_HEIGHT, 1)
+    val zbuffer = Array(IMAGE_HEIGHT) { DoubleArray(IMAGE_WIDTH) { Double.NEGATIVE_INFINITY } }
     image.processor.setColor(Color.BLACK.rgb)
     image.processor.fill()
 
-    val model = parseObj("/obj/african_head/african_head.obj")
+    val model = parseObj("/obj/skull.obj")
+    model.normalizeVertices()
 
-    model.vertices.forEach {
-        for (i in 0..2) {
-            it[i] *= -500.0
-            it[i] += 500.0
-        }
-    }
+    val vertices = model.vertices.map { it * (IMAGE_WIDTH / 2 - 1 ).toDouble() + Vec3I(IMAGE_WIDTH / 2 , IMAGE_WIDTH / 2, IMAGE_WIDTH / 2) }
+
 
     model.triangles.forEach {
-
-        val v0 = model.vertices[it[0]]
-        val v1 = model.vertices[it[1]]
-        val v2 = model.vertices[it[2]]
+        val v0 = vertices[it[0]]
+        val v1 = vertices[it[1]]
+        val v2 = vertices[it[2]]
 
         val side1 = v1 - v0
         val side2 = v2 - v0
         val intensity = side1.cross(side2).normalize().scalar(Vec3D(0.0, 0.0, 1.0)).toFloat()
-        if ( intensity > 0) {
-            val color = Color(intensity, intensity  , intensity).rgb
-            image.triangle(v0.toInt(), v1.toInt(), v2.toInt(), color)
+        if (intensity > 0) {
+            val color = Color(intensity, intensity, intensity).rgb
+            image.triangle(v0.toInt(), v1.toInt(), v2.toInt(), color, zbuffer)
         }
     }
 
+    image.processor.flipVertical()
     IJ.saveAs(image, "png", "result")
 }
 
@@ -73,7 +75,7 @@ fun ImagePlus.line(x0: Int, y0: Int, x1: Int, y1: Int, color: Int) {
     }
 }
 
-fun ImagePlus.triangle(v0: Vec3I, v1: Vec3I, v2: Vec3I, color: Int) {
+fun ImagePlus.triangle(v0: Vec3I, v1: Vec3I, v2: Vec3I, color: Int, zbuffer: Array<DoubleArray>) {
     val xes = intArrayOf(v0.x, v1.x, v2.x)
     val xmin = xes.min()!!
     val xmax = xes.max()!!
@@ -86,7 +88,11 @@ fun ImagePlus.triangle(v0: Vec3I, v1: Vec3I, v2: Vec3I, color: Int) {
         for (y in ymin..ymax) {
             val bary = barycentric(Vec3I(x, y, 0), v0, v1, v2)
             if (bary.x < 0 || bary.y < 0 || bary.z < 0) continue
-            this.processor[x, y] = color
+            val z = v0.z * bary.x + v1.z * bary.y + v2.z * bary.z
+            if (zbuffer[x][y] < z) {
+                zbuffer[x][y] = z
+                this.processor[x, y] = color
+            }
         }
     }
 
