@@ -1,6 +1,7 @@
 package com.akar.tinyrenderer
 
 import java.io.InputStreamReader
+import kotlin.math.max
 
 class Model {
     val vertices = mutableListOf<Vec3D>()
@@ -8,6 +9,18 @@ class Model {
 
     var tVertices = mutableListOf<Vec3D>()
     var tTriangles = mutableListOf<Vec3I>()
+
+    fun normalizeVertices() {
+        var max = Double.NEGATIVE_INFINITY
+        vertices.forEach {
+            for (i in 0..2) {
+                max = max(it[i], max)
+            }
+        }
+        for (i in vertices.indices) {
+            vertices[i] = vertices[i] / max
+        }
+    }
 
 }
 

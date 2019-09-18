@@ -53,7 +53,7 @@ class Vector3<T : Number>(var x: T, var y: T, var z: T) {
                     z.toDouble() + other.z.toDouble())
 
     operator fun minus(other: Vector3<out Number>) =
-            Vector3(x.toDouble() - other.x.toDouble(),
+            Vec3D(x.toDouble() - other.x.toDouble(),
                     y.toDouble() - other.y.toDouble(),
                     z.toDouble() - other.z.toDouble())
 
