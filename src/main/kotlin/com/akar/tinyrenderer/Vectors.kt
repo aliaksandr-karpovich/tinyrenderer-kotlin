@@ -34,6 +34,7 @@ class Vector3<T : Number>(var x: T, var y: T, var z: T) {
             Vec3D(y.toDouble() * other.z.toDouble() - z.toDouble() * other.y.toDouble(),
                     z.toDouble() * other.x.toDouble() - x.toDouble() * other.z.toDouble(),
                     x.toDouble() * other.y.toDouble() - y.toDouble() * other.x.toDouble())
+
     fun scalar(other: Vector3<out Number>) =
             x.toDouble() * other.x.toDouble() + y.toDouble() * other.y.toDouble() + z.toDouble() * other.z.toDouble()
 
@@ -41,6 +42,15 @@ class Vector3<T : Number>(var x: T, var y: T, var z: T) {
     fun length(): Double {
         return sqrt(x.toDouble() * x.toDouble() + y.toDouble() * y.toDouble() + z.toDouble() * z.toDouble())
     }
+
+    operator fun times(scalar: Double) = Vec3D(x.toDouble() * scalar, y.toDouble() * scalar, z.toDouble() * scalar)
+
+    operator fun div(scalar: Double) = Vec3D(x.toDouble() / scalar, y.toDouble() / scalar, z.toDouble() / scalar)
+
+    operator fun plus(other: Vector3<out Number>) =
+            Vec3D(x.toDouble() + other.x.toDouble(),
+                    y.toDouble() + other.y.toDouble(),
+                    z.toDouble() + other.z.toDouble())
 
     operator fun minus(other: Vector3<out Number>) =
             Vector3(x.toDouble() - other.x.toDouble(),
