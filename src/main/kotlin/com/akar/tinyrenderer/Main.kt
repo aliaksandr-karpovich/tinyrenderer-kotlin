@@ -2,43 +2,64 @@ package com.akar.tinyrenderer
 
 import ij.IJ
 import ij.ImagePlus
+import ij.process.ImageProcessor
 import java.awt.Color
-import kotlin.math.abs
+import java.awt.image.BufferedImage
+import java.io.File
+import javax.imageio.stream.FileImageOutputStream
+import kotlin.math.*
 
 const val IMAGE_WIDTH = 2048
 const val IMAGE_HEIGHT = 2048
 
 fun main() {
-
     val image = IJ.createImage("result", "RGB", IMAGE_WIDTH, IMAGE_HEIGHT, 1)
-    val zbuffer = Array(IMAGE_HEIGHT) { DoubleArray(IMAGE_WIDTH) { Double.NEGATIVE_INFINITY } }
     image.processor.setColor(Color.BLACK.rgb)
-    image.processor.fill()
-
-    val model = parseObj("/obj/skull.obj")
+    val outputStream = FileImageOutputStream(File("result.gif"))
+    val writer = GifSequenceWriter(outputStream, BufferedImage.TYPE_INT_RGB, 100, true)
+    val model = parseObj("/obj/african_head/african_head.obj")
     model.normalizeVertices()
 
-    val vertices = model.vertices.map { it * (IMAGE_WIDTH / 2 - 1 ).toDouble() + Vec3I(IMAGE_WIDTH / 2 , IMAGE_WIDTH / 2, IMAGE_WIDTH / 2) }
+    for (i in 0..35) {
+        val zbuffer = Array(IMAGE_HEIGHT) { DoubleArray(IMAGE_WIDTH) { Double.NEGATIVE_INFINITY } }
+        image.processor.fill()
+        println(i)
+        val alfa = 2 * PI / 36 * i
+        val rotation = Matrix(arrayOf(doubleArrayOf(cos(alfa), 0.0, sin(alfa)),
+                doubleArrayOf(0.0, 1.0, 0.0),
+                doubleArrayOf(-sin(alfa), 0.0, cos(alfa))))
+        val vertices = model.vertices.asSequence().map {
+            (rotation * it) * (IMAGE_WIDTH / 2 - 1).toDouble() + Vec3I(IMAGE_WIDTH / 2, IMAGE_WIDTH / 2, IMAGE_WIDTH / 2)
+        }.toList()
 
+        model.triangles.forEach {
+            val v0 = vertices[it[0]]
+            val v1 = vertices[it[1]]
+            val v2 = vertices[it[2]]
 
-    model.triangles.forEach {
-        val v0 = vertices[it[0]]
-        val v1 = vertices[it[1]]
-        val v2 = vertices[it[2]]
+            val side1 = v1 - v0
+            val side2 = v2 - v0
+            val intensity = side1.cross(side2).normalize().scalar(Vec3D(0.0, 0.0, 1.0))
+            if (intensity > 0) {
+                val steppedIntensity = intensityRange(intensity)
+                val color = Color(steppedIntensity, steppedIntensity, steppedIntensity).rgb
+                image.processor.triangle(v0, v1, v2, color, zbuffer)
+            }
 
-        val side1 = v1 - v0
-        val side2 = v2 - v0
-        val intensity = side1.cross(side2).normalize().scalar(Vec3D(0.0, 0.0, 1.0)).toFloat()
-        if (intensity > 0) {
-            val color = Color(intensity, intensity, intensity).rgb
-            image.triangle(v0.toInt(), v1.toInt(), v2.toInt(), color, zbuffer)
         }
+        image.processor.flipVertical()
+
+        writer.writeToSequence(image.processor.bufferedImage)
     }
 
-    image.processor.flipVertical()
-    IJ.saveAs(image, "png", "result")
+    writer.close()
 }
 
+fun intensityRange(value: Double) = when (value) {
+    in 0.0..0.4 -> 0.4f
+    in 0.4..0.8 -> 0.8f
+    else -> 1.0f
+}
 
 fun ImagePlus.line(x0: Int, y0: Int, x1: Int, y1: Int, color: Int) {
     var steep = false
@@ -75,33 +96,33 @@ fun ImagePlus.line(x0: Int, y0: Int, x1: Int, y1: Int, color: Int) {
     }
 }
 
-fun ImagePlus.triangle(v0: Vec3I, v1: Vec3I, v2: Vec3I, color: Int, zbuffer: Array<DoubleArray>) {
-    val xes = intArrayOf(v0.x, v1.x, v2.x)
+fun ImageProcessor.triangle(v0: Vec3D, v1: Vec3D, v2: Vec3D, color: Int, zbuffer: Array<DoubleArray>) {
+    val xes = doubleArrayOf(v0.x, v1.x, v2.x)
     val xmin = xes.min()!!
     val xmax = xes.max()!!
 
-    val ys = intArrayOf(v0.y, v1.y, v2.y)
+    val ys = doubleArrayOf(v0.y, v1.y, v2.y)
     val ymin = ys.min()!!
     val ymax = ys.max()!!
 
-    for (x in xmin..xmax) {
-        for (y in ymin..ymax) {
-            val bary = barycentric(Vec3I(x, y, 0), v0, v1, v2)
+    for (x in ceil(xmin).toInt()..xmax.toInt()) {
+        for (y: Int in ceil(ymin).toInt()..ymax.toInt()) {
+            val bary = barycentric(Vec3D(x.toDouble(), y.toDouble(), 0.0), v0, v1, v2)
             if (bary.x < 0 || bary.y < 0 || bary.z < 0) continue
             val z = v0.z * bary.x + v1.z * bary.y + v2.z * bary.z
             if (zbuffer[x][y] < z) {
                 zbuffer[x][y] = z
-                this.processor[x, y] = color
+                this[x, y] = color
             }
         }
     }
 
 }
 
-fun barycentric(v0: Vec3I, v1: Vec3I, v2: Vec3I, v3: Vec3I): Vec3D {
-    val denominator = ((v2.y - v3.y) * (v1.x - v3.x) + (v3.x - v2.x) * (v1.y - v3.y))
-    val l0 = ((v2.y - v3.y) * (v0.x - v3.x) + (v3.x - v2.x) * (v0.y - v3.y)).toDouble() / denominator
-    val l1 = ((v3.y - v1.y) * (v0.x - v3.x) + (v1.x - v3.x) * (v0.y - v3.y)).toDouble() / denominator
+fun barycentric(v0: Vec3D, v1: Vec3D, v2: Vec3D, v3: Vec3D): Vec3D {
+    val denominator = (v2.y - v3.y) * (v1.x - v3.x) + (v3.x - v2.x) * (v1.y - v3.y)
+    val l0 = ((v2.y - v3.y) * (v0.x - v3.x) + (v3.x - v2.x) * (v0.y - v3.y)) / denominator
+    val l1 = ((v3.y - v1.y) * (v0.x - v3.x) + (v1.x - v3.x) * (v0.y - v3.y)) / denominator
     val l2 = 1 - l0 - l1
     return Vec3D(l0, l1, l2)
 }
