@@ -22,7 +22,7 @@ fun main() {
     image.processor.setColor(Color.BLACK.rgb)
     val outputStream = FileImageOutputStream(File("result.gif"))
     val writer = GifSequenceWriter(outputStream, BufferedImage.TYPE_INT_RGB, 100, true)
-    val model = parseObj("/obj/african_head/african_head.obj")
+    val model = parseObj("obj/dennis.OBJ")
     model.normalizeVertices()
 
     for (i in 0..35) {
@@ -47,7 +47,7 @@ fun main() {
             val intensity = side1.cross(side2).normalize().scalar(Vec3D(0.0, 0.0, 1.0))
             if (intensity > 0) {
                 val steppedIntensity = intensityRange(intensity)
-                val color = Color(steppedIntensity, steppedIntensity, steppedIntensity).rgb
+                val color = Color(intensity.toFloat(), intensity.toFloat(), intensity.toFloat()).rgb
                 image.processor.triangle(v0, v1, v2, color, zbuffer)
             }
 
