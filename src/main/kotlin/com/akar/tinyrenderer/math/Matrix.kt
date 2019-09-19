@@ -1,4 +1,4 @@
-package com.akar.tinyrenderer
+package com.akar.tinyrenderer.math
 
 import java.util.*
 import kotlin.math.abs
@@ -58,7 +58,7 @@ class Matrix {
     val isSquare: Boolean
         get() = n == m
 
-    operator fun get(i: Int, j: Int) = elements[i][j]
+    operator fun get(i: Int) = elements[i]
 
     override fun toString(): String {
         val f = Formatter()
@@ -228,7 +228,7 @@ class Matrix {
 
     operator fun times(vector: Vec3D): Vec3D {
         val result = times(Matrix(vector))
-        return Vec3D(result[0, 0], result[1, 0], result[2, 0])
+        return Vec3D(result[0][0], result[1][0], result[2][0])
     }
 
     private fun checkZeroString(a: Int): Boolean {

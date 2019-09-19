@@ -1,4 +1,4 @@
-package com.akar.tinyrenderer
+package com.akar.tinyrenderer.util
 
 import java.awt.image.RenderedImage
 import javax.imageio.*

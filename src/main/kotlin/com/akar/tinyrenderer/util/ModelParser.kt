@@ -1,5 +1,8 @@
-package com.akar.tinyrenderer
+package com.akar.tinyrenderer.util
 
+import com.akar.tinyrenderer.math.Vec3D
+import com.akar.tinyrenderer.math.Vec3I
+import com.akar.tinyrenderer.math.Vector3
 import java.io.InputStreamReader
 import kotlin.math.max
 

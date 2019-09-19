@@ -1,5 +1,10 @@
 package com.akar.tinyrenderer
 
+import com.akar.tinyrenderer.math.Matrix
+import com.akar.tinyrenderer.math.Vec3D
+import com.akar.tinyrenderer.math.Vec3I
+import com.akar.tinyrenderer.util.GifSequenceWriter
+import com.akar.tinyrenderer.util.parseObj
 import ij.IJ
 import ij.ImagePlus
 import ij.process.ImageProcessor

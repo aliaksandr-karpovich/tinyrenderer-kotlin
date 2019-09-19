@@ -1,4 +1,4 @@
-package com.akar.tinyrenderer
+package com.akar.tinyrenderer.math
 
 import kotlin.math.sqrt
 
@@ -44,6 +44,8 @@ class Vector3<T : Number>(var x: T, var y: T, var z: T) {
     }
 
     operator fun times(scalar: Double) = Vec3D(x.toDouble() * scalar, y.toDouble() * scalar, z.toDouble() * scalar)
+
+    operator fun Double.times(vector: Vector3<out Number>): Vec3D = vector * this
 
     operator fun div(scalar: Double) = Vec3D(x.toDouble() / scalar, y.toDouble() / scalar, z.toDouble() / scalar)
 
