@@ -21,7 +21,6 @@ class Model {
 
     /**
      * Function for model standartization. It converts vertices coords to `[-1;1]` range.
-     *
      */
     fun normalizeVertices() {
         var max = Vec3D(NEG_INF, NEG_INF, NEG_INF)
@@ -44,7 +43,6 @@ class Model {
             vertices[i] = (vertices[i] - middle) / maxScalar
         }
     }
-
 }
 
 fun parseObj(fileName: String): Model {

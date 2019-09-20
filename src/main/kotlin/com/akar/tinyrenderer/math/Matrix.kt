@@ -54,6 +54,20 @@ class Matrix {
         elements = Array(n) { row -> DoubleArray(m) { vector[row] } }
     }
 
+    constructor(n: Int, vector: Vec3D) {
+        q = 1.0
+        this.n = n
+        m = 1
+        elements = Array(n) { row ->
+            DoubleArray(m) {
+                if (row > 2) {
+                    return@DoubleArray 1.0
+                }
+                vector[row]
+            }
+        }
+    }
+
 
     val isSquare: Boolean
         get() = n == m
@@ -111,7 +125,7 @@ class Matrix {
 
     fun determinant(): Double {
         if (!isSquare) throw Exception("Matrix is not square.")
-        val a = Matrix(stairStep())
+        val a = stairStep()
         var result = 1.0
         for (i in 0 until a.n) {
             result *= a.elements[i][i]
@@ -134,7 +148,7 @@ class Matrix {
     fun inverse(): Matrix {
         val det = determinant()
         val result = Matrix(n, m)
-        val transposed = Matrix(transpose())
+        val transposed = transpose()
         for (i in 0 until result.n) {
             for (j in 0 until result.m) {
                 result.elements[i][j] = transposed.adj(i, j) * (-1.0).pow(i + j.toDouble()) / det
@@ -227,6 +241,10 @@ class Matrix {
     }
 
     operator fun times(vector: Vec3D): Vec3D {
+        if (n == 4) {
+            val result = times(Matrix(4, vector))
+            return Vec3D(result[0][0], result[1][0], result[2][0]) / result[3][0]
+        }
         val result = times(Matrix(vector))
         return Vec3D(result[0][0], result[1][0], result[2][0])
     }

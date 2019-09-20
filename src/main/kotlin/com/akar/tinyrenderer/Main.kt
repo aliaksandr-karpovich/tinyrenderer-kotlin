@@ -58,7 +58,6 @@ fun main() {
 
         }
         image.processor.flipVertical()
-
         writer.writeToSequence(image.processor.bufferedImage)
         timeSum += System.currentTimeMillis() - startTime
     }
@@ -137,7 +136,6 @@ fun ImageProcessor.triangle(v0: Vec3D, v1: Vec3D, v2: Vec3D,
             }
         }
     }
-
 }
 
 fun barycentric(v0: Vec3D, v1: Vec3D, v2: Vec3D, v3: Vec3D): Vec3D {

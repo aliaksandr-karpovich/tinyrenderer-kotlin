@@ -4,6 +4,7 @@ import kotlin.math.sqrt
 
 typealias Vec3I = Vector3<Int>
 typealias Vec3D = Vector3<Double>
+typealias Vec3F = Vector3<Float>
 
 class Vector3<T : Number>(var x: T, var y: T, var z: T) {
     operator fun get(i: Int): T =
@@ -23,7 +24,7 @@ class Vector3<T : Number>(var x: T, var y: T, var z: T) {
         }
     }
 
-    fun toInt() = Vector3(x.toInt(), y.toInt(), z.toInt())
+    fun toInt() = Vec3I(x.toInt(), y.toInt(), z.toInt())
 
     fun normalize(): Vec3D {
         val length = length()
