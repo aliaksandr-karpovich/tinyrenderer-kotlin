@@ -59,4 +59,7 @@ class Vector3<T : Number>(var x: T, var y: T, var z: T) {
                     y.toDouble() - other.y.toDouble(),
                     z.toDouble() - other.z.toDouble())
 
+    override fun toString(): String {
+        return "[$x, $y, $z]"
+    }
 }

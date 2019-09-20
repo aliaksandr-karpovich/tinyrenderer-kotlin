@@ -22,40 +22,48 @@ fun main() {
     image.processor.setColor(Color.BLACK.rgb)
     val outputStream = FileImageOutputStream(File("result.gif"))
     val writer = GifSequenceWriter(outputStream, BufferedImage.TYPE_INT_RGB, 100, true)
-    val model = parseObj("obj/dennis.OBJ")
+    val model = parseObj("obj/dennis/dennis.obj")
+    model.diffuseTexture = IJ.openImage("obj/dennis/dennis_diff.jpg")
     model.normalizeVertices()
 
+    var timeSum = 0L
     for (i in 0..35) {
-        val zbuffer = Array(IMAGE_HEIGHT) { DoubleArray(IMAGE_WIDTH) { Double.NEGATIVE_INFINITY } }
+        val startTime = System.currentTimeMillis()
+        val zbuffer = DoubleArray(IMAGE_HEIGHT * IMAGE_WIDTH) { Double.NEGATIVE_INFINITY }
         image.processor.fill()
         println(i)
         val alfa = 2 * PI / 36 * i
         val rotation = Matrix(arrayOf(doubleArrayOf(cos(alfa), 0.0, sin(alfa)),
                 doubleArrayOf(0.0, 1.0, 0.0),
                 doubleArrayOf(-sin(alfa), 0.0, cos(alfa))))
-        val vertices = model.vertices.asSequence().map {
-            (rotation * it) * (IMAGE_WIDTH / 2 - 1).toDouble() + Vec3I(IMAGE_WIDTH / 2, IMAGE_WIDTH / 2, IMAGE_WIDTH / 2)
-        }.toList()
+        val vertices = model.vertices.map {
+            (rotation * it) * (IMAGE_WIDTH / 2 - 1).toDouble() + Vec3I(IMAGE_WIDTH / 2, IMAGE_HEIGHT / 2, IMAGE_HEIGHT / 2)
+        }
 
         model.triangles.forEach {
-            val v0 = vertices[it[0]]
-            val v1 = vertices[it[1]]
-            val v2 = vertices[it[2]]
+            val v0 = vertices[it.first[0]]
+            val v1 = vertices[it.first[1]]
+            val v2 = vertices[it.first[2]]
+
+            val vt0 = model.tVertices[it.second[0]]
+            val vt1 = model.tVertices[it.second[1]]
+            val vt2 = model.tVertices[it.second[2]]
 
             val side1 = v1 - v0
             val side2 = v2 - v0
             val intensity = side1.cross(side2).normalize().scalar(Vec3D(0.0, 0.0, 1.0))
             if (intensity > 0) {
-                val steppedIntensity = intensityRange(intensity)
-                val color = Color(intensity.toFloat(), intensity.toFloat(), intensity.toFloat()).rgb
-                image.processor.triangle(v0, v1, v2, color, zbuffer)
+                image.processor.triangle(v0, v1, v2, vt0, vt1, vt2, model.diffuseTexture!!, zbuffer)
             }
 
         }
         image.processor.flipVertical()
 
         writer.writeToSequence(image.processor.bufferedImage)
+        timeSum += System.currentTimeMillis() - startTime
     }
+
+    println(timeSum / 36)
 
     writer.close()
 }
@@ -101,7 +109,9 @@ fun ImagePlus.line(x0: Int, y0: Int, x1: Int, y1: Int, color: Int) {
     }
 }
 
-fun ImageProcessor.triangle(v0: Vec3D, v1: Vec3D, v2: Vec3D, color: Int, zbuffer: Array<DoubleArray>) {
+fun ImageProcessor.triangle(v0: Vec3D, v1: Vec3D, v2: Vec3D,
+                            vt0: Vec3D, vt1: Vec3D, vt2: Vec3D,
+                            diffuse: ImagePlus, zbuffer: DoubleArray) {
     val xes = doubleArrayOf(v0.x, v1.x, v2.x)
     val xmin = xes.min()!!
     val xmax = xes.max()!!
@@ -110,14 +120,20 @@ fun ImageProcessor.triangle(v0: Vec3D, v1: Vec3D, v2: Vec3D, color: Int, zbuffer
     val ymin = ys.min()!!
     val ymax = ys.max()!!
 
+    operator fun DoubleArray.get(x: Int, y: Int) = get(x * width + y)
+    operator fun DoubleArray.set(x: Int, y: Int, value: Double) = set(x * width + y, value)
+
     for (x in ceil(xmin).toInt()..xmax.toInt()) {
         for (y: Int in ceil(ymin).toInt()..ymax.toInt()) {
             val bary = barycentric(Vec3D(x.toDouble(), y.toDouble(), 0.0), v0, v1, v2)
             if (bary.x < 0 || bary.y < 0 || bary.z < 0) continue
             val z = v0.z * bary.x + v1.z * bary.y + v2.z * bary.z
-            if (zbuffer[x][y] < z) {
-                zbuffer[x][y] = z
-                this[x, y] = color
+            if (zbuffer[x, y] < z) {
+                zbuffer[x, y] = z
+                val pt = vt0 * bary.x + vt1 * bary.y + vt2 * bary.z
+                pt.x *= diffuse.width
+                pt.y = (1 - pt.y) * diffuse.height
+                this[x, y] = diffuse.processor[pt.x.toInt(), pt.y.toInt()]
             }
         }
     }
