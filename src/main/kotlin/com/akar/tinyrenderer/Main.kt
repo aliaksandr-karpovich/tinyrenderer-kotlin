@@ -16,6 +16,7 @@ import kotlin.math.*
 
 const val IMAGE_WIDTH = 2048
 const val IMAGE_HEIGHT = 2048
+const val CIRCLE_SECTIONS = 36
 
 fun main() {
     val image = IJ.createImage("result", "RGB", IMAGE_WIDTH, IMAGE_HEIGHT, 1)
@@ -27,12 +28,12 @@ fun main() {
     model.normalizeVertices()
 
     var timeSum = 0L
-    for (i in 0..35) {
+    for (i in 0 until CIRCLE_SECTIONS) {
         val startTime = System.currentTimeMillis()
         val zbuffer = DoubleArray(IMAGE_HEIGHT * IMAGE_WIDTH) { Double.NEGATIVE_INFINITY }
         image.processor.fill()
         println(i)
-        val alfa = 2 * PI / 36 * i
+        val alfa = 2 * PI / CIRCLE_SECTIONS * i
         val rotation = Matrix(arrayOf(doubleArrayOf(cos(alfa), 0.0, sin(alfa)),
                 doubleArrayOf(0.0, 1.0, 0.0),
                 doubleArrayOf(-sin(alfa), 0.0, cos(alfa))))
@@ -53,7 +54,7 @@ fun main() {
             val side2 = v2 - v0
             val intensity = side1.cross(side2).normalize().scalar(Vec3D(0.0, 0.0, 1.0))
             if (intensity > 0) {
-                image.processor.triangle(v0, v1, v2, vt0, vt1, vt2, model.diffuseTexture!!, zbuffer)
+                image.processor.triangle(v0, v1, v2, vt0, vt1, vt2, model.diffuseTexture!!, zbuffer, intensity)
             }
 
         }
@@ -110,7 +111,8 @@ fun ImagePlus.line(x0: Int, y0: Int, x1: Int, y1: Int, color: Int) {
 
 fun ImageProcessor.triangle(v0: Vec3D, v1: Vec3D, v2: Vec3D,
                             vt0: Vec3D, vt1: Vec3D, vt2: Vec3D,
-                            diffuse: ImagePlus, zbuffer: DoubleArray) {
+                            diffuse: ImagePlus, zbuffer: DoubleArray,
+                            intensity: Double) {
     val xes = doubleArrayOf(v0.x, v1.x, v2.x)
     val xmin = xes.min()!!
     val xmax = xes.max()!!
@@ -132,7 +134,7 @@ fun ImageProcessor.triangle(v0: Vec3D, v1: Vec3D, v2: Vec3D,
                 val pt = vt0 * bary.x + vt1 * bary.y + vt2 * bary.z
                 pt.x *= diffuse.width
                 pt.y = (1 - pt.y) * diffuse.height
-                this[x, y] = diffuse.processor[pt.x.toInt(), pt.y.toInt()]
+                this[x, y] = applyIntensity(diffuse.processor[pt.x.toInt(), pt.y.toInt()], intensity)
             }
         }
     }
@@ -144,4 +146,9 @@ fun barycentric(v0: Vec3D, v1: Vec3D, v2: Vec3D, v3: Vec3D): Vec3D {
     val l1 = ((v3.y - v1.y) * (v0.x - v3.x) + (v1.x - v3.x) * (v0.y - v3.y)) / denominator
     val l2 = 1 - l0 - l1
     return Vec3D(l0, l1, l2)
+}
+
+fun applyIntensity(rgb: Int, intensity: Double): Int {
+    val color = Color(rgb)
+    return Color((color.red * intensity).toInt(), (color.green * intensity).toInt(), (color.blue * intensity).toInt()).rgb
 }
