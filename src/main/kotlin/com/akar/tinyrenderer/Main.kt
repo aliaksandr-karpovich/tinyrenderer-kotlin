@@ -11,13 +11,11 @@ import ij.process.ImageProcessor
 import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.File
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 import javax.imageio.stream.FileImageOutputStream
 import kotlin.math.*
 
-const val IMAGE_WIDTH = 2048
-const val IMAGE_HEIGHT = 2048
+const val IMAGE_WIDTH = 1024
+const val IMAGE_HEIGHT = 1024
 const val CIRCLE_SECTIONS = 36
 const val C = 1.0
 
@@ -26,34 +24,35 @@ val PERSPECTIVE_PROJECTION = Matrix(arrayOf(
         doubleArrayOf(.0, 1.0, .0, .0),
         doubleArrayOf(.0, .0, 1.0, .0),
         doubleArrayOf(.0, .0, -1 / C, 1.0)))
+val xrotation = Matrix(arrayOf(
+        doubleArrayOf(1.0, .0, .0),
+        doubleArrayOf(.0, .0, -1.0),
+        doubleArrayOf(.0, 1.0, .0)
+))
 
 fun main() {
     val startTime = System.currentTimeMillis()
-    val images = Array<ImagePlus>(CIRCLE_SECTIONS) {
-        val result = IJ.createImage("result", "RGB", IMAGE_WIDTH, IMAGE_HEIGHT, 1)
-        result.processor.setColor(Color.BLACK.rgb)
-        result
-    }
+    val image = IJ.createImage("result", "RGB", IMAGE_WIDTH, IMAGE_HEIGHT, 1)
+    image.processor.setColor(Color.BLACK)
     val outputStream = FileImageOutputStream(File("result.gif"))
     val writer = GifSequenceWriter(outputStream, BufferedImage.TYPE_INT_RGB, 100, true)
-    val model = parseObj("obj/african_head/african_head.obj")
-    model.diffuseTexture = IJ.openImage("obj/african_head/african_head_diffuse.png")
+    val model = parseObj("obj/mech/mech.obj")
     model.normalizeVertices()
-    val executor = Executors.newFixedThreadPool(6)
     for (i in 0 until CIRCLE_SECTIONS) {
-        executor.submit {
-            val start = System.currentTimeMillis()
-            val zbuffer = DoubleArray(IMAGE_HEIGHT * IMAGE_WIDTH) { Double.NEGATIVE_INFINITY }
-            images[i].processor.fill()
-            println(">$i")
-            val alfa = 2 * PI / CIRCLE_SECTIONS * i
-            val rotation = Matrix(arrayOf(doubleArrayOf(cos(alfa), 0.0, sin(alfa)),
-                    doubleArrayOf(0.0, 1.0, 0.0),
-                    doubleArrayOf(-sin(alfa), 0.0, cos(alfa))))
-            val vertices = model.vertices.map {
-                (PERSPECTIVE_PROJECTION * (rotation * it + Vec3I(0, 0, -1))) * (IMAGE_WIDTH / 2 - 1).toDouble() + Vec3I(IMAGE_WIDTH / 2, IMAGE_HEIGHT / 2, IMAGE_HEIGHT / 2)
-            }
-            model.triangles.forEach {
+        val start = System.currentTimeMillis()
+        val zbuffer = DoubleArray(IMAGE_HEIGHT * IMAGE_WIDTH) { Double.NEGATIVE_INFINITY }
+        image.processor.fill()
+        println(">$i")
+        val alfa = 2 * PI / CIRCLE_SECTIONS * i
+        val rotation = Matrix(arrayOf(doubleArrayOf(cos(alfa), 0.0, sin(alfa)),
+                doubleArrayOf(0.0, 1.0, 0.0),
+                doubleArrayOf(-sin(alfa), 0.0, cos(alfa))))
+        val vertices = model.vertices.map {
+            (PERSPECTIVE_PROJECTION * (rotation * it + Vec3I(0, 0, -1))) * (IMAGE_WIDTH / 2 - 1).toDouble() + Vec3I(IMAGE_WIDTH / 2, IMAGE_HEIGHT / 2, IMAGE_HEIGHT / 2)
+        }
+
+        model.objects.values.forEach { obj ->
+            obj.triangles.forEach {
                 val v0 = vertices[it.first[0]]
                 val v1 = vertices[it.first[1]]
                 val v2 = vertices[it.first[2]]
@@ -66,17 +65,13 @@ fun main() {
                 val side2 = v2 - v0
                 val intensity = side1.cross(side2).normalize().scalar(Vec3D(0.0, 0.0, 1.0))
                 if (intensity > 0) {
-                    images[i].processor.triangle(v0, v1, v2, vt0, vt1, vt2, model.diffuseTexture!!, zbuffer, intensity)
+                    image.processor.triangle(v0, v1, v2, vt0, vt1, vt2, model.materials[obj.material]?.mapKd!!, zbuffer, intensity)
                 }
             }
-            images[i].processor.flipVertical()
-            println("<$i ${System.currentTimeMillis() - start}")
         }
-    }
-    executor.shutdown()
-    executor.awaitTermination(5, TimeUnit.SECONDS)
-    for (i in images.indices) {
-        writer.writeToSequence(images[i].bufferedImage)
+        image.processor.flipVertical()
+        println("<$i ${System.currentTimeMillis() - start}")
+        writer.writeToSequence(image.bufferedImage)
     }
     writer.close()
     println(System.currentTimeMillis() - startTime)

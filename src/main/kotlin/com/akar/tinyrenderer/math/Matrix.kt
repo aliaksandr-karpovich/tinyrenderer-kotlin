@@ -36,7 +36,6 @@ class Matrix {
         }
     }
 
-
     constructor(b: Matrix) {
         q = b.q
         n = b.n
@@ -144,7 +143,6 @@ class Matrix {
         return result
     }
 
-
     fun inverse(): Matrix {
         val det = determinant()
         val result = Matrix(n, m)
@@ -156,7 +154,6 @@ class Matrix {
         }
         return result
     }
-
 
     private fun adj(a: Int, b: Int): Double {
         val result = Matrix(n - 1, m - 1)
