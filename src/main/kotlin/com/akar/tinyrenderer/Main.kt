@@ -11,61 +11,75 @@ import ij.process.ImageProcessor
 import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.File
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import javax.imageio.stream.FileImageOutputStream
 import kotlin.math.*
 
 const val IMAGE_WIDTH = 2048
 const val IMAGE_HEIGHT = 2048
 const val CIRCLE_SECTIONS = 36
+const val C = 1.0
+
+val PERSPECTIVE_PROJECTION = Matrix(arrayOf(
+        doubleArrayOf(1.0, .0, .0, .0),
+        doubleArrayOf(.0, 1.0, .0, .0),
+        doubleArrayOf(.0, .0, 1.0, .0),
+        doubleArrayOf(.0, .0, -1 / C, 1.0)))
 
 fun main() {
-    val image = IJ.createImage("result", "RGB", IMAGE_WIDTH, IMAGE_HEIGHT, 1)
-    image.processor.setColor(Color.BLACK.rgb)
+    val startTime = System.currentTimeMillis()
+    val images = Array<ImagePlus>(CIRCLE_SECTIONS) {
+        val result = IJ.createImage("result", "RGB", IMAGE_WIDTH, IMAGE_HEIGHT, 1)
+        result.processor.setColor(Color.BLACK.rgb)
+        result
+    }
     val outputStream = FileImageOutputStream(File("result.gif"))
     val writer = GifSequenceWriter(outputStream, BufferedImage.TYPE_INT_RGB, 100, true)
-    val model = parseObj("obj/dennis/dennis.obj")
-    model.diffuseTexture = IJ.openImage("obj/dennis/dennis_diff.jpg")
+    val model = parseObj("obj/african_head/african_head.obj")
+    model.diffuseTexture = IJ.openImage("obj/african_head/african_head_diffuse.png")
     model.normalizeVertices()
-
-    var timeSum = 0L
+    val executor = Executors.newFixedThreadPool(6)
     for (i in 0 until CIRCLE_SECTIONS) {
-        val startTime = System.currentTimeMillis()
-        val zbuffer = DoubleArray(IMAGE_HEIGHT * IMAGE_WIDTH) { Double.NEGATIVE_INFINITY }
-        image.processor.fill()
-        println(i)
-        val alfa = 2 * PI / CIRCLE_SECTIONS * i
-        val rotation = Matrix(arrayOf(doubleArrayOf(cos(alfa), 0.0, sin(alfa)),
-                doubleArrayOf(0.0, 1.0, 0.0),
-                doubleArrayOf(-sin(alfa), 0.0, cos(alfa))))
-        val vertices = model.vertices.map {
-            (rotation * it) * (IMAGE_WIDTH / 2 - 1).toDouble() + Vec3I(IMAGE_WIDTH / 2, IMAGE_HEIGHT / 2, IMAGE_HEIGHT / 2)
-        }
-
-        model.triangles.forEach {
-            val v0 = vertices[it.first[0]]
-            val v1 = vertices[it.first[1]]
-            val v2 = vertices[it.first[2]]
-
-            val vt0 = model.tVertices[it.second[0]]
-            val vt1 = model.tVertices[it.second[1]]
-            val vt2 = model.tVertices[it.second[2]]
-
-            val side1 = v1 - v0
-            val side2 = v2 - v0
-            val intensity = side1.cross(side2).normalize().scalar(Vec3D(0.0, 0.0, 1.0))
-            if (intensity > 0) {
-                image.processor.triangle(v0, v1, v2, vt0, vt1, vt2, model.diffuseTexture!!, zbuffer, intensity)
+        executor.submit {
+            val start = System.currentTimeMillis()
+            val zbuffer = DoubleArray(IMAGE_HEIGHT * IMAGE_WIDTH) { Double.NEGATIVE_INFINITY }
+            images[i].processor.fill()
+            println(">$i")
+            val alfa = 2 * PI / CIRCLE_SECTIONS * i
+            val rotation = Matrix(arrayOf(doubleArrayOf(cos(alfa), 0.0, sin(alfa)),
+                    doubleArrayOf(0.0, 1.0, 0.0),
+                    doubleArrayOf(-sin(alfa), 0.0, cos(alfa))))
+            val vertices = model.vertices.map {
+                (PERSPECTIVE_PROJECTION * (rotation * it + Vec3I(0, 0, -1))) * (IMAGE_WIDTH / 2 - 1).toDouble() + Vec3I(IMAGE_WIDTH / 2, IMAGE_HEIGHT / 2, IMAGE_HEIGHT / 2)
             }
+            model.triangles.forEach {
+                val v0 = vertices[it.first[0]]
+                val v1 = vertices[it.first[1]]
+                val v2 = vertices[it.first[2]]
 
+                val vt0 = model.tVertices[it.second[0]]
+                val vt1 = model.tVertices[it.second[1]]
+                val vt2 = model.tVertices[it.second[2]]
+
+                val side1 = v1 - v0
+                val side2 = v2 - v0
+                val intensity = side1.cross(side2).normalize().scalar(Vec3D(0.0, 0.0, 1.0))
+                if (intensity > 0) {
+                    images[i].processor.triangle(v0, v1, v2, vt0, vt1, vt2, model.diffuseTexture!!, zbuffer, intensity)
+                }
+            }
+            images[i].processor.flipVertical()
+            println("<$i ${System.currentTimeMillis() - start}")
         }
-        image.processor.flipVertical()
-        writer.writeToSequence(image.processor.bufferedImage)
-        timeSum += System.currentTimeMillis() - startTime
     }
-
-    println(timeSum / 36)
-
+    executor.shutdown()
+    executor.awaitTermination(5, TimeUnit.SECONDS)
+    for (i in images.indices) {
+        writer.writeToSequence(images[i].bufferedImage)
+    }
     writer.close()
+    println(System.currentTimeMillis() - startTime)
 }
 
 fun intensityRange(value: Double) = when (value) {
@@ -125,7 +139,9 @@ fun ImageProcessor.triangle(v0: Vec3D, v1: Vec3D, v2: Vec3D,
     operator fun DoubleArray.set(x: Int, y: Int, value: Double) = set(x * width + y, value)
 
     for (x in ceil(xmin).toInt()..xmax.toInt()) {
+        if (x !in 0 until IMAGE_HEIGHT) continue
         for (y: Int in ceil(ymin).toInt()..ymax.toInt()) {
+            if (y !in 0 until IMAGE_WIDTH) continue
             val bary = barycentric(Vec3D(x.toDouble(), y.toDouble(), 0.0), v0, v1, v2)
             if (bary.x < 0 || bary.y < 0 || bary.z < 0) continue
             val z = v0.z * bary.x + v1.z * bary.y + v2.z * bary.z
