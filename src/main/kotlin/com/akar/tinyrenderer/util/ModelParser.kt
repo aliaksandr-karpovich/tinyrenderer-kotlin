@@ -2,6 +2,7 @@ package com.akar.tinyrenderer.util
 
 import com.akar.tinyrenderer.math.Vec3D
 import com.akar.tinyrenderer.math.Vec3I
+import ij.IJ
 import ij.ImagePlus
 import java.io.File
 import java.io.FileReader
@@ -18,6 +19,10 @@ class Model {
     var tVertices = mutableListOf<Vec3D>()
 
     var diffuseTexture: ImagePlus? = null
+
+    var objects = mutableMapOf<String, ModelObject>()
+
+    var materials = mutableMapOf<String, Material>()
 
     /**
      * Function for model standartization. It converts vertices coords to `[-1;1]` range.
@@ -45,13 +50,39 @@ class Model {
     }
 }
 
+class ModelObject {
+    var triangles = mutableListOf<Pair<Vec3I, Vec3I>>()
+
+
+    var diffuseTexture: ImagePlus? = null
+    var material: String = ""
+
+    override fun toString(): String {
+        return material
+    }
+}
+
+class Material {
+    var mapKd: ImagePlus? = null
+
+}
+
 fun parseObj(fileName: String): Model {
     val result = Model()
-    val file = FileReader(File(fileName))
-    file.readLines().asSequence().map { it.split(" ").filter { it.isNotEmpty() } }.filter { it.isNotEmpty() }.forEach {
+    val file = File(fileName)
+    val reader = FileReader(file)
+    var objName = ""
+    reader.readLines().asSequence().map { it.split(" ").filter { it.isNotEmpty() } }.filter { it.isNotEmpty() }.forEach {
         when (it[0]) {
+            "mtllib" -> result.materials.putAll(parseMtl(file.parent, it[1]))
+            "o" -> {
+                objName = it[1]
+                result.objects[objName] = ModelObject()
+            }
+            "usemtl" -> result.objects[objName]?.material = it[1]
             "v" -> result.vertices.add(Vec3D(it[1].toDouble(), it[2].toDouble(), it[3].toDouble()))
             "f" -> {
+
                 val vertexIds = Vec3I(0, 0, 0)
                 val textureVertexIds = Vec3I(0, 0, 0)
                 for (i in 1..3) {
@@ -59,12 +90,40 @@ fun parseObj(fileName: String): Model {
                     vertexIds[i - 1] = ids[0] - 1
                     textureVertexIds[i - 1] = ids[1] - 1
                 }
-                result.triangles.add(Pair(vertexIds, textureVertexIds))
+                result.triangles.add(vertexIds to textureVertexIds)
+                result.objects[objName]?.triangles?.add(vertexIds to textureVertexIds)
+
+                if (it.size == 5) {
+                    val ids = it[4].split("/").map { it.toInt() }
+                    val additionalFurnace = Vec3I(vertexIds[0], vertexIds[2], ids[0] - 1) to
+                            Vec3I(textureVertexIds[0], textureVertexIds[2], ids[1] - 1)
+                    result.triangles.add(additionalFurnace)
+                    result.objects[objName]?.triangles?.add(additionalFurnace)
+                }
             }
             "vt" -> {
                 it.drop(1).map { it.toDouble() }.also {
-                    result.tVertices.add(Vec3D(it[0], it[1], it[2]))
+                    result.tVertices.add(Vec3D(it[0], it[1], if (it.size > 2) it[2] else 0.0))
                 }
+            }
+        }
+    }
+    return result
+}
+
+fun parseMtl(parent: String, fileName: String): MutableMap<String, Material> {
+    val result = mutableMapOf<String, Material>()
+    val file = File("$parent/$fileName")
+    val fileReader = FileReader(file)
+    var matName = ""
+    fileReader.readLines().asSequence().map { it.split(" ").filter { it.isNotEmpty() } }.filter { it.isNotEmpty() }.forEach {
+        when (it[0]) {
+            "newmtl" -> {
+                matName = it[1]
+                result[matName] = Material()
+            }
+            "map_Kd" -> {
+                result[matName]?.mapKd = IJ.openImage("${file.parent}/${it[1]}")
             }
         }
     }
