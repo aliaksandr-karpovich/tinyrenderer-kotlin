@@ -130,13 +130,13 @@ fun ImageProcessor.triangle(v0: Vec3D, v1: Vec3D, v2: Vec3D,
     val ymin = ys.min()!!
     val ymax = ys.max()!!
 
-    operator fun DoubleArray.get(x: Int, y: Int) = get(x * width + y)
-    operator fun DoubleArray.set(x: Int, y: Int, value: Double) = set(x * width + y, value)
+    operator fun DoubleArray.get(x: Int, y: Int) = get(y * width + x)
+    operator fun DoubleArray.set(x: Int, y: Int, value: Double) = set(y * width + x, value)
 
     for (x in ceil(xmin).toInt()..xmax.toInt()) {
-        if (x !in 0 until IMAGE_HEIGHT) continue
+        if (x !in 0 until IMAGE_WIDTH) continue
         for (y: Int in ceil(ymin).toInt()..ymax.toInt()) {
-            if (y !in 0 until IMAGE_WIDTH) continue
+            if (y !in 0 until IMAGE_HEIGHT) continue
             val bary = barycentric(Vec3D(x.toDouble(), y.toDouble(), 0.0), v0, v1, v2)
             if (bary.x < 0 || bary.y < 0 || bary.z < 0) continue
             val z = v0.z * bary.x + v1.z * bary.y + v2.z * bary.z
