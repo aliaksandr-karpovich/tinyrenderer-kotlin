@@ -12,17 +12,17 @@ import kotlin.math.min
 import kotlin.Double.Companion.NEGATIVE_INFINITY as NEG_INF
 import kotlin.Double.Companion.POSITIVE_INFINITY as POS_INF
 
+const val DEFAULT_NAME = "default"
+
 class Model {
     val vertices = mutableListOf<Vec3D>()
     var triangles = mutableListOf<Pair<Vec3I, Vec3I>>()
 
     var tVertices = mutableListOf<Vec3D>()
 
-    var diffuseTexture: ImagePlus? = null
+    var objects = mutableMapOf(DEFAULT_NAME to ModelObject())
 
-    var objects = mutableMapOf<String, ModelObject>()
-
-    var materials = mutableMapOf<String, Material>()
+    var materials = mutableMapOf(DEFAULT_NAME to Material())
 
     /**
      * Function for model standartization. It converts vertices coords to `[-1;1]` range.
@@ -53,9 +53,7 @@ class Model {
 class ModelObject {
     var triangles = mutableListOf<Pair<Vec3I, Vec3I>>()
 
-
-    var diffuseTexture: ImagePlus? = null
-    var material: String = ""
+    var material: String = DEFAULT_NAME
 
     override fun toString(): String {
         return material
@@ -71,7 +69,7 @@ fun parseObj(fileName: String): Model {
     val result = Model()
     val file = File(fileName)
     val reader = FileReader(file)
-    var objName = ""
+    var objName = DEFAULT_NAME
     reader.readLines().asSequence().map { it.split(" ").filter { it.isNotEmpty() } }.filter { it.isNotEmpty() }.forEach {
         when (it[0]) {
             "mtllib" -> result.materials.putAll(parseMtl(file.parent, it[1]))
