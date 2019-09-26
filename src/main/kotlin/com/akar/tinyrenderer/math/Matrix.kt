@@ -188,18 +188,35 @@ class Matrix {
         return true
     }
 
-
-    operator fun times(b: Matrix): Matrix {
-        if (m != b.n) throw Exception("Matrices size don't match for multiply")
-        val result = Matrix(n, b.m)
-        var s: Double
+    operator fun times(other: Matrix): Matrix {
+        var b = other
+        var a = this
+        if (isSquare && b.isSquare && n != b.n) {
+            if (a.n < b.n) {
+                a = Matrix(Array(b.n) { i ->
+                    DoubleArray(b.n) { j ->
+                        if (i < a.n && j < a.n) a.elements[i][j]
+                        else if (i == j) 1.0
+                        else .0
+                    }
+                })
+            } else {
+                b = Matrix(Array(a.n) { i ->
+                    DoubleArray(a.n) { j ->
+                        if (i < b.n && j < b.n) a.elements[i][j]
+                        else if (i == j) 1.0
+                        else .0
+                    }
+                })
+            }
+        }
+        if (a.m != b.n) throw Exception("Matrices size don't match for multiply")
+        val result = Matrix(a.n, b.m)
         for (i in 0 until result.n) {
             for (j in 0 until result.m) {
-                s = 0.0
                 for (k in 0 until m) {
-                    s += elements[i][k] * b.elements[k][j]
+                    result.elements[i][j] += a.elements[i][k] * b.elements[k][j]
                 }
-                result.elements[i][j] = s
             }
         }
         return result
