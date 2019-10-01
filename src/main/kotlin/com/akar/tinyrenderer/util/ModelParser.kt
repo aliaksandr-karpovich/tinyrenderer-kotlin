@@ -92,7 +92,10 @@ fun parseObj(fileName: String): Model {
                 val vertexIds = Vec3I(0, 0, 0)
                 val textureVertexIds = Vec3I(0, 0, 0)
                 for (i in 1..3) {
-                    val ids = it[i].split("/").map { it.toInt() }
+                    val ids = it[i].split("/").map {
+                        if (it.isEmpty()) return@map Int.MIN_VALUE + 1
+                        it.toInt()
+                    }
                     vertexIds[i - 1] = ids[0] - 1
                     textureVertexIds[i - 1] = ids[1] - 1
                 }
@@ -100,7 +103,10 @@ fun parseObj(fileName: String): Model {
                 result.objects[objName]?.triangles?.add(vertexIds to textureVertexIds)
 
                 if (it.size == 5) {
-                    val ids = it[4].split("/").map { it.toInt() }
+                    val ids = it[4].split("/").map {
+                        if (it.isEmpty()) return@map Int.MIN_VALUE + 1
+                        it.toInt()
+                    }
                     val additionalFurnace = Vec3I(vertexIds[0], vertexIds[2], ids[0] - 1) to
                             Vec3I(textureVertexIds[0], textureVertexIds[2], ids[1] - 1)
                     result.triangles.add(additionalFurnace)

@@ -15,8 +15,8 @@ import java.io.File
 import javax.imageio.stream.FileImageOutputStream
 import kotlin.math.*
 
-const val IMAGE_WIDTH = 1024
-const val IMAGE_HEIGHT = 1024
+const val IMAGE_WIDTH = 4096
+const val IMAGE_HEIGHT = 4096
 const val CIRCLE_SECTIONS = 36
 const val C = 1.0
 
@@ -25,10 +25,12 @@ val PERSPECTIVE_PROJECTION = Matrix(arrayOf(
         doubleArrayOf(.0, 1.0, .0, .0),
         doubleArrayOf(.0, .0, 1.0, .0),
         doubleArrayOf(.0, .0, -1 / C, 1.0)))
+
+val xrotationAlpha = -PI / 2
 val xrotation = Matrix(arrayOf(
         doubleArrayOf(1.0, .0, .0),
-        doubleArrayOf(.0, .0, -1.0),
-        doubleArrayOf(.0, 1.0, .0)
+        doubleArrayOf(.0, cos(xrotationAlpha), -sin(xrotationAlpha)),
+        doubleArrayOf(.0, sin(xrotationAlpha), cos(xrotationAlpha))
 ))
 
 fun main() {
@@ -58,9 +60,19 @@ fun main() {
                 val v1 = vertices[it.first[1]]
                 val v2 = vertices[it.first[2]]
 
-                val vt0 = model.tVertices[it.second[0]]
-                val vt1 = model.tVertices[it.second[1]]
-                val vt2 = model.tVertices[it.second[2]]
+                val vt0: Vec3D
+                val vt1: Vec3D
+                val vt2: Vec3D
+
+                if (it.second[0] != Int.MIN_VALUE) {
+                    vt0 = model.tVertices[it.second[0]]
+                    vt1 = model.tVertices[it.second[1]]
+                    vt2 = model.tVertices[it.second[2]]
+                } else {
+                    vt0 = Vec3D(0.0, 0.0, 0.0)
+                    vt1 = Vec3D(0.0, 0.0, 0.0)
+                    vt2 = Vec3D(0.0, 0.0, 0.0)
+                }
 
                 val side1 = v1 - v0
                 val side2 = v2 - v0
@@ -72,7 +84,10 @@ fun main() {
         }
         image.processor.flipVertical()
         println("<$i ${System.currentTimeMillis() - start}")
-        writer.writeToSequence(image.bufferedImage)
+        writer.writeToSequence(image.antiAliase().bufferedImage)
+        if (i == 1) {
+            IJ.saveAs(image.antiAliase(), "png", "result1")
+        }
     }
     writer.close()
     println(System.currentTimeMillis() - startTime)
@@ -161,4 +176,22 @@ fun barycentric(v0: Vec3D, v1: Vec3D, v2: Vec3D, v3: Vec3D): Vec3D {
 fun applyIntensity(rgb: Int, intensity: Double): Int {
     val color = Color(rgb)
     return Color((color.red * intensity).toInt(), (color.green * intensity).toInt(), (color.blue * intensity).toInt()).rgb
+}
+
+fun ImagePlus.antiAliase(): ImagePlus {
+    val result = IJ.createImage("result", "RGB", this.width / 2, this.height / 2, 1)
+    for (x in 0 until  result.width) {
+        for (y in 0 until result.height) {
+            result.processor[x, y] = averageColor(this.processor[x * 2, y * 2], this.processor[x * 2 + 1, y * 2],
+                    this.processor[x * 2, y * 2 + 1],this.processor[x * 2 + 1, y * 2 + 1])
+        }
+    }
+    return result
+}
+
+fun averageColor(vararg colors: Int):Int {
+    val objColors =  colors.map { Color(it) }
+    return Color(objColors.sumBy { it.red } / objColors.size,
+            objColors.sumBy { it.green } / objColors.size,
+            objColors.sumBy { it.blue } / objColors.size).rgb
 }
