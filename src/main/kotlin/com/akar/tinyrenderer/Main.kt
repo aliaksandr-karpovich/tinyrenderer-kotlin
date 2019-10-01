@@ -15,8 +15,8 @@ import java.io.File
 import javax.imageio.stream.FileImageOutputStream
 import kotlin.math.*
 
-const val IMAGE_WIDTH = 4096
-const val IMAGE_HEIGHT = 4096
+const val IMAGE_WIDTH = 1024
+const val IMAGE_HEIGHT = 1024
 const val CIRCLE_SECTIONS = 36
 const val C = 1.0
 
@@ -84,10 +84,7 @@ fun main() {
         }
         image.processor.flipVertical()
         println("<$i ${System.currentTimeMillis() - start}")
-        writer.writeToSequence(image.antiAliase().bufferedImage)
-        if (i == 1) {
-            IJ.saveAs(image.antiAliase(), "png", "result1")
-        }
+        writer.writeToSequence(image.bufferedImage)
     }
     writer.close()
     println(System.currentTimeMillis() - startTime)
@@ -178,19 +175,24 @@ fun applyIntensity(rgb: Int, intensity: Double): Int {
     return Color((color.red * intensity).toInt(), (color.green * intensity).toInt(), (color.blue * intensity).toInt()).rgb
 }
 
-fun ImagePlus.antiAliase(): ImagePlus {
-    val result = IJ.createImage("result", "RGB", this.width / 2, this.height / 2, 1)
-    for (x in 0 until  result.width) {
+fun ImagePlus.antiAlias(level: Int): ImagePlus {
+    val result = IJ.createImage("result", "RGB", this.width / level, this.height / level, 1)
+    for (x in 0 until result.width) {
         for (y in 0 until result.height) {
-            result.processor[x, y] = averageColor(this.processor[x * 2, y * 2], this.processor[x * 2 + 1, y * 2],
-                    this.processor[x * 2, y * 2 + 1],this.processor[x * 2 + 1, y * 2 + 1])
+            val colors = mutableListOf<Int>()
+            for (i in 0 until level) {
+                for (j in 0 until level) {
+                    colors.add(this.processor[level * x + i, level * y + j])
+                }
+            }
+            result.processor[x, y] = averageColor(*colors.toIntArray())
         }
     }
     return result
 }
 
-fun averageColor(vararg colors: Int):Int {
-    val objColors =  colors.map { Color(it) }
+fun averageColor(vararg colors: Int): Int {
+    val objColors = colors.map { Color(it) }
     return Color(objColors.sumBy { it.red } / objColors.size,
             objColors.sumBy { it.green } / objColors.size,
             objColors.sumBy { it.blue } / objColors.size).rgb
