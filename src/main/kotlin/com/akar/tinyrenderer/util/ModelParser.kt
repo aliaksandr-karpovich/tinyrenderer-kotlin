@@ -4,6 +4,7 @@ import com.akar.tinyrenderer.math.Vec3D
 import com.akar.tinyrenderer.math.Vec3I
 import ij.IJ
 import ij.ImagePlus
+import java.awt.Color
 import java.io.File
 import java.io.FileReader
 import kotlin.math.abs
@@ -25,7 +26,7 @@ class Model {
     var materials = mutableMapOf(DEFAULT_NAME to Material())
 
     /**
-     * Function for model standartization. It converts vertices coords to `[-1;1]` range.
+     * Function for model standardization. It converts vertices coords to `[-1;1]` range.
      */
     fun normalizeVertices() {
         var max = Vec3D(NEG_INF, NEG_INF, NEG_INF)
@@ -62,7 +63,14 @@ class ModelObject {
 
 class Material {
     var mapKd: ImagePlus? = null
+    var kd: Color? = null
 
+    operator fun get(x: Double, y: Double): Int {
+        if (mapKd != null) {
+            return mapKd!!.processor[(mapKd!!.processor.width * x).toInt(), (mapKd!!.processor.height * (1.0 - y)).toInt()]
+        }
+        return kd!!.rgb
+    }
 }
 
 fun parseObj(fileName: String): Model {
@@ -122,6 +130,10 @@ fun parseMtl(parent: String, fileName: String): MutableMap<String, Material> {
             }
             "map_Kd" -> {
                 result[matName]?.mapKd = IJ.openImage("${file.parent}/${it[1]}")
+            }
+            "Kd" -> {
+                val rgbf = it.drop(1).map { it.toFloat() }
+                result[matName]?.kd = Color(rgbf[0], rgbf[1], rgbf[2])
             }
         }
     }

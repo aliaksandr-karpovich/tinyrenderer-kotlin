@@ -4,6 +4,7 @@ import com.akar.tinyrenderer.math.Matrix
 import com.akar.tinyrenderer.math.Vec3D
 import com.akar.tinyrenderer.math.Vec3I
 import com.akar.tinyrenderer.util.GifSequenceWriter
+import com.akar.tinyrenderer.util.Material
 import com.akar.tinyrenderer.util.parseObj
 import ij.IJ
 import ij.ImagePlus
@@ -65,7 +66,7 @@ fun main() {
                 val side2 = v2 - v0
                 val intensity = side1.cross(side2).normalize().scalar(Vec3D(0.0, 0.0, 1.0))
                 if (intensity > 0) {
-                    image.processor.triangle(v0, v1, v2, vt0, vt1, vt2, model.materials[obj.material]?.mapKd!!, zbuffer, intensity)
+                    image.processor.triangle(v0, v1, v2, vt0, vt1, vt2, model.materials[obj.material]!!, zbuffer, intensity)
                 }
             }
         }
@@ -120,7 +121,7 @@ fun ImagePlus.line(x0: Int, y0: Int, x1: Int, y1: Int, color: Int) {
 
 fun ImageProcessor.triangle(v0: Vec3D, v1: Vec3D, v2: Vec3D,
                             vt0: Vec3D, vt1: Vec3D, vt2: Vec3D,
-                            diffuse: ImagePlus, zbuffer: DoubleArray,
+                            material: Material, zbuffer: DoubleArray,
                             intensity: Double) {
     val xes = doubleArrayOf(v0.x, v1.x, v2.x)
     val xmin = xes.min()!!
@@ -143,9 +144,7 @@ fun ImageProcessor.triangle(v0: Vec3D, v1: Vec3D, v2: Vec3D,
             if (zbuffer[x, y] < z) {
                 zbuffer[x, y] = z
                 val pt = vt0 * bary.x + vt1 * bary.y + vt2 * bary.z
-                pt.x *= diffuse.width
-                pt.y = (1 - pt.y) * diffuse.height
-                this[x, y] = applyIntensity(diffuse.processor[pt.x.toInt(), pt.y.toInt()], intensity)
+                this[x, y] = applyIntensity(material[pt.x, pt.y], intensity)
             }
         }
     }
