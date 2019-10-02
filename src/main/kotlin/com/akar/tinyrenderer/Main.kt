@@ -5,6 +5,7 @@ import com.akar.tinyrenderer.math.Vec3D
 import com.akar.tinyrenderer.math.Vec3I
 import com.akar.tinyrenderer.util.GifSequenceWriter
 import com.akar.tinyrenderer.util.Material
+import com.akar.tinyrenderer.util.Model
 import com.akar.tinyrenderer.util.parseObj
 import ij.IJ
 import ij.ImagePlus
@@ -15,8 +16,8 @@ import java.io.File
 import javax.imageio.stream.FileImageOutputStream
 import kotlin.math.*
 
-const val IMAGE_WIDTH = 1024
-const val IMAGE_HEIGHT = 1024
+const val DEFAULT_IMAGE_WIDTH = 1024
+const val DEFAULT_IMAGE_HEIGHT = 1024
 const val CIRCLE_SECTIONS = 36
 const val C = 1.0
 
@@ -33,9 +34,18 @@ val xrotation = Matrix(arrayOf(
         doubleArrayOf(.0, sin(xrotationAlpha), cos(xrotationAlpha))
 ))
 
-fun main() {
+fun main(args: Array<String>) {
+    val imageWidth: Int
+    val imageHeight: Int
     val startTime = System.currentTimeMillis()
-    val image = IJ.createImage("result", "RGB", IMAGE_WIDTH, IMAGE_HEIGHT, 1)
+    if (args.contains("-AA")) {
+        imageWidth = DEFAULT_IMAGE_WIDTH * 2
+        imageHeight = DEFAULT_IMAGE_HEIGHT * 2
+    } else {
+        imageWidth = DEFAULT_IMAGE_WIDTH
+        imageHeight = DEFAULT_IMAGE_HEIGHT
+    }
+    val image = IJ.createImage("result", "RGB", imageWidth, imageHeight, 1)
     image.processor.setColor(Color.BLACK)
     val outputStream = FileImageOutputStream(File("result.gif"))
     val writer = GifSequenceWriter(outputStream, BufferedImage.TYPE_INT_RGB, 100, true)
@@ -43,7 +53,7 @@ fun main() {
     model.normalizeVertices()
     for (i in 0 until CIRCLE_SECTIONS) {
         val start = System.currentTimeMillis()
-        val zbuffer = DoubleArray(IMAGE_HEIGHT * IMAGE_WIDTH) { Double.NEGATIVE_INFINITY }
+        val zbuffer = DoubleArray(imageHeight * imageWidth) { Double.NEGATIVE_INFINITY }
         image.processor.fill()
         println(">$i")
         val alfa = 2 * PI / CIRCLE_SECTIONS * i
@@ -51,43 +61,46 @@ fun main() {
                 doubleArrayOf(0.0, 1.0, 0.0),
                 doubleArrayOf(-sin(alfa), 0.0, cos(alfa))))
         val vertices = model.vertices.map {
-            (PERSPECTIVE_PROJECTION * (rotation * it + Vec3I(0, 0, -1))) * (IMAGE_WIDTH / 2 - 1).toDouble() + Vec3I(IMAGE_WIDTH / 2, IMAGE_HEIGHT / 2, IMAGE_HEIGHT / 2)
+            (PERSPECTIVE_PROJECTION * (rotation * it + Vec3I(0, 0, -1))) * (imageWidth / 2 - 1).toDouble() + Vec3I(imageWidth / 2, imageHeight / 2, imageHeight / 2)
         }
-
-        model.objects.values.forEach { obj ->
-            obj.triangles.forEach {
-                val v0 = vertices[it.first[0]]
-                val v1 = vertices[it.first[1]]
-                val v2 = vertices[it.first[2]]
-
-                val vt0: Vec3D
-                val vt1: Vec3D
-                val vt2: Vec3D
-
-                if (it.second[0] != Int.MIN_VALUE) {
-                    vt0 = model.tVertices[it.second[0]]
-                    vt1 = model.tVertices[it.second[1]]
-                    vt2 = model.tVertices[it.second[2]]
-                } else {
-                    vt0 = Vec3D(0.0, 0.0, 0.0)
-                    vt1 = Vec3D(0.0, 0.0, 0.0)
-                    vt2 = Vec3D(0.0, 0.0, 0.0)
-                }
-
-                val side1 = v1 - v0
-                val side2 = v2 - v0
-                val intensity = side1.cross(side2).normalize().scalar(Vec3D(0.0, 0.0, 1.0))
-                if (intensity > 0) {
-                    image.processor.triangle(v0, v1, v2, vt0, vt1, vt2, model.materials[obj.material]!!, zbuffer, intensity)
-                }
-            }
-        }
+        rasterize(vertices, model, image, zbuffer)
         image.processor.flipVertical()
         println("<$i ${System.currentTimeMillis() - start}")
         writer.writeToSequence(image.bufferedImage)
     }
     writer.close()
     println(System.currentTimeMillis() - startTime)
+}
+
+fun rasterize(vertices: List<Vec3D>, model: Model, image: ImagePlus, zbuffer: DoubleArray) {
+    model.objects.values.forEach { obj ->
+        obj.triangles.forEach {
+            val v0 = vertices[it.first[0]]
+            val v1 = vertices[it.first[1]]
+            val v2 = vertices[it.first[2]]
+
+            val vt0: Vec3D
+            val vt1: Vec3D
+            val vt2: Vec3D
+
+            if (it.second[0] != Int.MIN_VALUE) {
+                vt0 = model.tVertices[it.second[0]]
+                vt1 = model.tVertices[it.second[1]]
+                vt2 = model.tVertices[it.second[2]]
+            } else {
+                vt0 = Vec3D(0.0, 0.0, 0.0)
+                vt1 = Vec3D(0.0, 0.0, 0.0)
+                vt2 = Vec3D(0.0, 0.0, 0.0)
+            }
+
+            val side1 = v1 - v0
+            val side2 = v2 - v0
+            val intensity = side1.cross(side2).normalize().scalar(Vec3D(0.0, 0.0, 1.0))
+            if (intensity > 0) {
+                image.processor.triangle(v0, v1, v2, vt0, vt1, vt2, model.materials[obj.material]!!, zbuffer, intensity)
+            }
+        }
+    }
 }
 
 fun intensityRange(value: Double) = when (value) {
@@ -147,9 +160,9 @@ fun ImageProcessor.triangle(v0: Vec3D, v1: Vec3D, v2: Vec3D,
     operator fun DoubleArray.set(x: Int, y: Int, value: Double) = set(y * width + x, value)
 
     for (x in ceil(xmin).toInt()..xmax.toInt()) {
-        if (x !in 0 until IMAGE_WIDTH) continue
+        if (x !in 0 until this.width) continue
         for (y: Int in ceil(ymin).toInt()..ymax.toInt()) {
-            if (y !in 0 until IMAGE_HEIGHT) continue
+            if (y !in 0 until this.height) continue
             val bary = barycentric(Vec3D(x.toDouble(), y.toDouble(), 0.0), v0, v1, v2)
             if (bary.x < 0 || bary.y < 0 || bary.z < 0) continue
             val z = v0.z * bary.x + v1.z * bary.y + v2.z * bary.z
