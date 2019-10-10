@@ -15,6 +15,7 @@ import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.stream.FileImageOutputStream
 import kotlin.math.*
+import kotlin.doubleArrayOf as da
 
 const val DEFAULT_IMAGE_WIDTH = 1024
 const val DEFAULT_IMAGE_HEIGHT = 1024
@@ -22,17 +23,19 @@ const val CIRCLE_SECTIONS = 36
 const val C = 1.0
 
 val PERSPECTIVE_PROJECTION = Matrix(arrayOf(
-        doubleArrayOf(1.0, .0, .0, .0),
-        doubleArrayOf(.0, 1.0, .0, .0),
-        doubleArrayOf(.0, .0, 1.0, .0),
-        doubleArrayOf(.0, .0, -1 / C, 1.0)))
+        da(1.0, .0, .0, .0),
+        da(.0, 1.0, .0, .0),
+        da(.0, .0, 1.0, .0),
+        da(.0, .0, -1 / C, 1.0)))
 
 val xrotationAlpha = -PI / 2
 val xrotation = Matrix(arrayOf(
-        doubleArrayOf(1.0, .0, .0),
-        doubleArrayOf(.0, cos(xrotationAlpha), -sin(xrotationAlpha)),
-        doubleArrayOf(.0, sin(xrotationAlpha), cos(xrotationAlpha))
-))
+        da(1.0, .0, .0),
+        da(.0, cos(xrotationAlpha), -sin(xrotationAlpha)),
+        da(.0, sin(xrotationAlpha), cos(xrotationAlpha))))
+val camPos = Vec3D(0.0, 2.0, 2.0)
+val focus = Vec3D(0.0, 0.0, 0.0)
+val up = Vec3D(0.0, 0.0, -1.0)
 
 fun main(args: Array<String>) {
     val imageWidth: Int
@@ -56,12 +59,17 @@ fun main(args: Array<String>) {
         val zbuffer = DoubleArray(imageHeight * imageWidth) { Double.NEGATIVE_INFINITY }
         image.processor.fill()
         println(">$i")
+        val look = lookat(camPos, focus, up)
+
         val alfa = 2 * PI / CIRCLE_SECTIONS * i
-        val rotation = Matrix(arrayOf(doubleArrayOf(cos(alfa), 0.0, sin(alfa)),
-                doubleArrayOf(0.0, 1.0, 0.0),
-                doubleArrayOf(-sin(alfa), 0.0, cos(alfa))))
+        val rotation = Matrix(arrayOf(
+                da(cos(alfa), 0.0, sin(alfa)),
+                da(0.0, 1.0, 0.0),
+                da(-sin(alfa), 0.0, cos(alfa))))
+        val clip = PERSPECTIVE_PROJECTION * look * rotation
+
         val vertices = model.vertices.map {
-            (PERSPECTIVE_PROJECTION * (rotation * it + Vec3I(0, 0, -1))) * (imageWidth / 2 - 1).toDouble() + Vec3I(imageWidth / 2, imageHeight / 2, imageHeight / 2)
+            (clip * it) * (imageWidth / 2 - 1).toDouble() + Vec3I(imageWidth / 2, imageHeight / 2, imageHeight / 2)
         }
         rasterize(vertices, model, image, zbuffer)
         image.processor.flipVertical()
@@ -103,12 +111,6 @@ fun rasterize(vertices: List<Vec3D>, model: Model, image: ImagePlus, zbuffer: Do
     }
 }
 
-fun intensityRange(value: Double) = when (value) {
-    in 0.0..0.4 -> 0.4f
-    in 0.4..0.8 -> 0.8f
-    else -> 1.0f
-}
-
 fun ImagePlus.line(x0: Int, y0: Int, x1: Int, y1: Int, color: Int) {
     var steep = false
     var _x0 = x0
@@ -144,15 +146,36 @@ fun ImagePlus.line(x0: Int, y0: Int, x1: Int, y1: Int, color: Int) {
     }
 }
 
+fun lookat(cameraPosition: Vec3D, focus: Vec3D, up: Vec3D): Matrix {
+    val z = (cameraPosition - focus).normalize()
+    val x = up.cross(z).normalize()
+    val y = z.cross(x).normalize()
+    val transition = Matrix(4)
+    val transformation = Matrix(4)
+    for (i in 0 until 3) {
+        transformation[0][i] = x[i]
+        transformation[1][i] = y[i]
+        transformation[2][i] = z[i]
+        transition[i][3] = -cameraPosition[i]
+    }
+    return transformation * transition
+}
+
+fun perspective(fov: Double, aspectRatio: Double, near: Double, far: Double): Matrix {
+    val result = Matrix(4)
+    //TODO insert code here
+    return result
+}
+
 fun ImageProcessor.triangle(v0: Vec3D, v1: Vec3D, v2: Vec3D,
                             vt0: Vec3D, vt1: Vec3D, vt2: Vec3D,
                             material: Material, zbuffer: DoubleArray,
                             intensity: Double) {
-    val xes = doubleArrayOf(v0.x, v1.x, v2.x)
+    val xes = da(v0.x, v1.x, v2.x)
     val xmin = xes.min()!!
     val xmax = xes.max()!!
 
-    val ys = doubleArrayOf(v0.y, v1.y, v2.y)
+    val ys = da(v0.y, v1.y, v2.y)
     val ymin = ys.min()!!
     val ymax = ys.max()!!
 
