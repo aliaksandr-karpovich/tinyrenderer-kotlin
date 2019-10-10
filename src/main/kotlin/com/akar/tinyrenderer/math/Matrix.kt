@@ -53,6 +53,13 @@ class Matrix {
         elements = Array(n) { row -> DoubleArray(m) { vector[row] } }
     }
 
+    constructor(n: Int) {
+        q = 1.0
+        this.n = n
+        m = n
+        elements = Array(n) { i -> DoubleArray(n) { j -> if (i == j) 1.0 else 0.0 } }
+    }
+
     constructor(n: Int, vector: Vec3D) {
         q = 1.0
         this.n = n
@@ -191,7 +198,7 @@ class Matrix {
     operator fun times(other: Matrix): Matrix {
         var b = other
         var a = this
-        if (isSquare && b.isSquare && n != b.n) {
+        if (a.isSquare && b.isSquare && a.n != b.n) {
             if (a.n < b.n) {
                 a = Matrix(Array(b.n) { i ->
                     DoubleArray(b.n) { j ->
@@ -203,7 +210,7 @@ class Matrix {
             } else {
                 b = Matrix(Array(a.n) { i ->
                     DoubleArray(a.n) { j ->
-                        if (i < b.n && j < b.n) a.elements[i][j]
+                        if (i < b.n && j < b.n) b.elements[i][j]
                         else if (i == j) 1.0
                         else .0
                     }
@@ -214,7 +221,7 @@ class Matrix {
         val result = Matrix(a.n, b.m)
         for (i in 0 until result.n) {
             for (j in 0 until result.m) {
-                for (k in 0 until m) {
+                for (k in 0 until a.m) {
                     result.elements[i][j] += a.elements[i][k] * b.elements[k][j]
                 }
             }
