@@ -162,9 +162,24 @@ fun lookat(cameraPosition: Vec3D, focus: Vec3D, up: Vec3D): Matrix {
 }
 
 fun perspective(fov: Double, aspectRatio: Double, near: Double, far: Double): Matrix {
-    val result = Matrix(4)
-    //TODO insert code here
-    return result
+    val r = tan(fov / 2 * PI / 180) * near
+    val l = -r
+    val t = r / aspectRatio
+    val b = -t
+    return Matrix(arrayOf(
+            da(2 * near / (r - l), 0.0,                (r + l) / (r - l),            0.0),
+            da(0.0,                2 * near / (t - b), (t + b) / (t - b),            0.0),
+            da(0.0,                0.0,                -(far + near) / (far - near), -2 * far * near / (far - near)),
+            da(0.0,                0.0,                -1.0,                         0.0)))
+}
+
+fun viewport(width: Double, height: Double): Matrix {
+    return Matrix(arrayOf(
+            da(width / 2, 0.0,        0.0, width / 2),
+            da(0.0,       height / 2, 0.0, height / 2),
+            da(0.0,       0.0,        0.5, 0.5),
+            da(0.0,       0.0,        0.0, 1.0)
+    ))
 }
 
 fun ImageProcessor.triangle(v0: Vec3D, v1: Vec3D, v2: Vec3D,

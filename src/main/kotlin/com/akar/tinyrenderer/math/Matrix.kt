@@ -11,13 +11,7 @@ class Matrix {
     private var n: Int
     private var m: Int
 
-    constructor() {
-        q = 1.0
-        m = 1
-        n = m
-        elements = Array(n) { DoubleArray(m) }
-        elements[0][0] = 0.0
-    }
+    constructor(): this(1)
 
     constructor(n: Int, m: Int) {
         q = 1.0
