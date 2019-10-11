@@ -20,34 +20,21 @@ import kotlin.doubleArrayOf as da
 const val DEFAULT_IMAGE_WIDTH = 1024
 const val DEFAULT_IMAGE_HEIGHT = 1024
 const val CIRCLE_SECTIONS = 36
-const val C = 1.0
-
-val PERSPECTIVE_PROJECTION = Matrix(arrayOf(
-        da(1.0, .0, .0, .0),
-        da(.0, 1.0, .0, .0),
-        da(.0, .0, 1.0, .0),
-        da(.0, .0, -1 / C, 1.0)))
+const val FOV = 90.0
 
 val xrotationAlpha = -PI / 2
 val xrotation = Matrix(arrayOf(
         da(1.0, .0, .0),
         da(.0, cos(xrotationAlpha), -sin(xrotationAlpha)),
         da(.0, sin(xrotationAlpha), cos(xrotationAlpha))))
-val camPos = Vec3D(0.0, 2.0, 2.0)
+val camPos = Vec3D(0.0, 0.0, 2.0)
 val focus = Vec3D(0.0, 0.0, 0.0)
-val up = Vec3D(0.0, 0.0, -1.0)
+val up = Vec3D(0.0, 1.0, 0.0)
 
 fun main(args: Array<String>) {
-    val imageWidth: Int
-    val imageHeight: Int
+    val imageWidth: Int = DEFAULT_IMAGE_WIDTH
+    val imageHeight: Int = DEFAULT_IMAGE_HEIGHT
     val startTime = System.currentTimeMillis()
-    if (args.contains("-AA")) {
-        imageWidth = DEFAULT_IMAGE_WIDTH * 2
-        imageHeight = DEFAULT_IMAGE_HEIGHT * 2
-    } else {
-        imageWidth = DEFAULT_IMAGE_WIDTH
-        imageHeight = DEFAULT_IMAGE_HEIGHT
-    }
     val image = IJ.createImage("result", "RGB", imageWidth, imageHeight, 1)
     image.processor.setColor(Color.BLACK)
     val outputStream = FileImageOutputStream(File("result.gif"))
@@ -56,22 +43,34 @@ fun main(args: Array<String>) {
     model.normalizeVertices()
     for (i in 0 until CIRCLE_SECTIONS) {
         val start = System.currentTimeMillis()
-        val zbuffer = DoubleArray(imageHeight * imageWidth) { Double.NEGATIVE_INFINITY }
+        val zbuffer = DoubleArray(imageHeight * imageWidth) { Double.POSITIVE_INFINITY }
         image.processor.fill()
         println(">$i")
-        val look = lookat(camPos, focus, up)
-
         val alfa = 2 * PI / CIRCLE_SECTIONS * i
+        val look = lookat(camPos, focus, up)
         val rotation = Matrix(arrayOf(
                 da(cos(alfa), 0.0, sin(alfa)),
                 da(0.0, 1.0, 0.0),
                 da(-sin(alfa), 0.0, cos(alfa))))
-        val clip = PERSPECTIVE_PROJECTION * look * rotation
-
-        val vertices = model.vertices.map {
-            (clip * it) * (imageWidth / 2 - 1).toDouble() + Vec3I(imageWidth / 2, imageHeight / 2, imageHeight / 2)
+        val clip = perspective(FOV, imageWidth.toDouble() / imageHeight , 0.1, 10.0) * look * rotation
+        val viewport = viewport(imageWidth.toDouble(), imageHeight.toDouble())
+        val modelView = clip * viewport
+        val clipCoords = model.vertices.map {
+            (clip * it)
         }
-        rasterize(vertices, model, image, zbuffer)
+        val viewportCoords = clipCoords.map { viewport * it }
+        for(obj in model.objects.values) {
+            val surfaces = obj.triangles.filter {
+                val vertexIndices = it.first
+                for (i in 0..2) {
+                    val vertex = clipCoords[vertexIndices[i]]
+                    if (vertex.x in -1.0..1.0 && vertex.y in -1.0..1.0 && vertex.z in 0.0..1.0)
+                        return@filter true
+                }
+                false
+            }
+            rasterize(viewportCoords, surfaces, obj.material, model, image, zbuffer)
+        }
         image.processor.flipVertical()
         println("<$i ${System.currentTimeMillis() - start}")
         writer.writeToSequence(image.bufferedImage)
@@ -80,33 +79,31 @@ fun main(args: Array<String>) {
     println(System.currentTimeMillis() - startTime)
 }
 
-fun rasterize(vertices: List<Vec3D>, model: Model, image: ImagePlus, zbuffer: DoubleArray) {
-    model.objects.values.forEach { obj ->
-        obj.triangles.forEach {
-            val v0 = vertices[it.first[0]]
-            val v1 = vertices[it.first[1]]
-            val v2 = vertices[it.first[2]]
+fun rasterize(vertices: List<Vec3D>, triangles: List<Pair<Vec3I,Vec3I>>, material: String, model: Model, image: ImagePlus, zbuffer: DoubleArray) {
+    triangles.forEach {
+        val v0 = vertices[it.first[0]]
+        val v1 = vertices[it.first[1]]
+        val v2 = vertices[it.first[2]]
 
-            val vt0: Vec3D
-            val vt1: Vec3D
-            val vt2: Vec3D
+        val vt0: Vec3D
+        val vt1: Vec3D
+        val vt2: Vec3D
 
-            if (it.second[0] != Int.MIN_VALUE) {
-                vt0 = model.tVertices[it.second[0]]
-                vt1 = model.tVertices[it.second[1]]
-                vt2 = model.tVertices[it.second[2]]
-            } else {
-                vt0 = Vec3D(0.0, 0.0, 0.0)
-                vt1 = Vec3D(0.0, 0.0, 0.0)
-                vt2 = Vec3D(0.0, 0.0, 0.0)
-            }
+        if (it.second[0] != Int.MIN_VALUE) {
+            vt0 = model.tVertices[it.second[0]]
+            vt1 = model.tVertices[it.second[1]]
+            vt2 = model.tVertices[it.second[2]]
+        } else {
+            vt0 = Vec3D(0.0, 0.0, 0.0)
+            vt1 = Vec3D(0.0, 0.0, 0.0)
+            vt2 = Vec3D(0.0, 0.0, 0.0)
+        }
 
-            val side1 = v1 - v0
-            val side2 = v2 - v0
-            val intensity = side1.cross(side2).normalize().scalar(Vec3D(0.0, 0.0, 1.0))
-            if (intensity > 0) {
-                image.processor.triangle(v0, v1, v2, vt0, vt1, vt2, model.materials[obj.material]!!, zbuffer, intensity)
-            }
+        val side1 = v1 - v0
+        val side2 = v2 - v0
+        val intensity = side1.cross(side2).normalize().scalar(Vec3D(0.0, 0.0, 1.0))
+        if (intensity > 0) {
+            image.processor.triangle(v0, v1, v2, vt0, vt1, vt2, model.materials[material]!!, zbuffer, intensity)
         }
     }
 }
@@ -204,7 +201,7 @@ fun ImageProcessor.triangle(v0: Vec3D, v1: Vec3D, v2: Vec3D,
             val bary = barycentric(Vec3D(x.toDouble(), y.toDouble(), 0.0), v0, v1, v2)
             if (bary.x < 0 || bary.y < 0 || bary.z < 0) continue
             val z = v0.z * bary.x + v1.z * bary.y + v2.z * bary.z
-            if (zbuffer[x, y] < z) {
+            if (zbuffer[x, y] > z) {
                 zbuffer[x, y] = z
                 val pt = vt0 * bary.x + vt1 * bary.y + vt2 * bary.z
                 this[x, y] = applyIntensity(material[pt.x, pt.y], intensity)
