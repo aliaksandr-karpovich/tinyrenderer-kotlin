@@ -11,7 +11,7 @@ class Matrix {
     private var n: Int
     private var m: Int
 
-    constructor(): this(1)
+    constructor() : this(1)
 
     constructor(n: Int, m: Int) {
         q = 1.0
@@ -43,6 +43,13 @@ class Matrix {
     constructor(vector: Vec3D) {
         q = 1.0
         n = 3
+        m = 1
+        elements = Array(n) { row -> DoubleArray(m) { vector[row] } }
+    }
+
+    constructor(vector: Vec4D) {
+        q = 1.0
+        n = 4
         m = 1
         elements = Array(n) { row -> DoubleArray(m) { vector[row] } }
     }
@@ -262,6 +269,16 @@ class Matrix {
         }
         val result = times(Matrix(vector))
         return Vec3D(result[0][0], result[1][0], result[2][0])
+    }
+
+    operator fun times(vector: Vec4D): Vec4D {
+        val result = times(Matrix(vector))
+        return Vec4D(result[0][0], result[1][0], result[2][0], result[3][0])
+    }
+
+    fun homohenTimes(vector: Vec3D): Vec4D {
+        val result = times(Matrix(4, vector))
+        return Vec4D(result[0][0], result[1][0], result[2][0], result[3][0])
     }
 
     private fun checkZeroString(a: Int): Boolean {

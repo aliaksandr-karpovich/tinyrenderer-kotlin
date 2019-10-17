@@ -5,9 +5,10 @@ import kotlin.math.sqrt
 typealias Vec3I = Vector3<Int>
 typealias Vec3D = Vector3<Double>
 typealias Vec3F = Vector3<Float>
+typealias Vec4D = Vector4<Double>
 
-class Vector3<T : Number>(var x: T, var y: T, var z: T) {
-    operator fun get(i: Int): T =
+open class Vector3<T : Number>(var x: T, var y: T, var z: T) {
+    open operator fun get(i: Int): T =
             when (i) {
                 0 -> x
                 1 -> y
@@ -15,7 +16,7 @@ class Vector3<T : Number>(var x: T, var y: T, var z: T) {
                 else -> throw IllegalArgumentException("must be in 0..2")
             }
 
-    operator fun set(i: Int, value: T) {
+    open operator fun set(i: Int, value: T) {
         when (i) {
             0 -> x = value
             1 -> y = value
@@ -36,15 +37,16 @@ class Vector3<T : Number>(var x: T, var y: T, var z: T) {
                     z.toDouble() * other.x.toDouble() - x.toDouble() * other.z.toDouble(),
                     x.toDouble() * other.y.toDouble() - y.toDouble() * other.x.toDouble())
 
-    fun scalar(other: Vector3<out Number>) =
+    fun dot(other: Vector3<out Number>) =
             x.toDouble() * other.x.toDouble() + y.toDouble() * other.y.toDouble() + z.toDouble() * other.z.toDouble()
-
 
     fun length(): Double {
         return sqrt(x.toDouble() * x.toDouble() + y.toDouble() * y.toDouble() + z.toDouble() * z.toDouble())
     }
 
     operator fun times(scalar: Double) = Vec3D(x.toDouble() * scalar, y.toDouble() * scalar, z.toDouble() * scalar)
+
+    operator fun times(other: Vector3<out Number>) = dot(other)
 
     operator fun Double.times(vector: Vector3<out Number>): Vec3D = vector * this
 
@@ -62,5 +64,25 @@ class Vector3<T : Number>(var x: T, var y: T, var z: T) {
 
     override fun toString(): String {
         return "[$x, $y, $z]"
+    }
+}
+
+class Vector4<T : Number>(x: T, y: T, z: T, var w: T) : Vector3<T>(x, y, z) {
+
+    fun toVec3D(): Vec3D = Vec3D(x.toDouble() / w.toDouble(), y.toDouble() / w.toDouble(), z.toDouble() / w.toDouble())
+
+    override operator fun get(i: Int): T =
+            when (i) {
+                in 0..2 -> super.get(i)
+                3 -> w
+                else -> throw IllegalArgumentException("must be in 0..3")
+            }
+
+    override operator fun set(i: Int, value: T) {
+        when (i) {
+            in 0..2 -> super.set(i, value)
+            3 -> w = value
+            else -> throw IllegalArgumentException("must be in 0..3")
+        }
     }
 }

@@ -17,7 +17,8 @@ const val DEFAULT_NAME = "default"
 
 class Model {
     val vertices = mutableListOf<Vec3D>()
-    var triangles = mutableListOf<Pair<Vec3I, Vec3I>>()
+    val vertexNormals = mutableListOf<Vec3D>()
+    var triangles = mutableListOf<Face>()
 
     var tVertices = mutableListOf<Vec3D>()
 
@@ -51,8 +52,12 @@ class Model {
     }
 }
 
+data class Face(val vertex: Vec3I, val tvertvex: Vec3I, val normal: Vec3I) {
+
+}
+
 class ModelObject {
-    var triangles = mutableListOf<Pair<Vec3I, Vec3I>>()
+    var triangles = mutableListOf<Face>()
 
     var material: String = DEFAULT_NAME
 
@@ -87,10 +92,11 @@ fun parseObj(fileName: String): Model {
             }
             "usemtl" -> result.objects[objName]?.material = it[1]
             "v" -> result.vertices.add(Vec3D(it[1].toDouble(), it[2].toDouble(), it[3].toDouble()))
+            "vn" -> result.vertexNormals.add(Vec3D(it[1].toDouble(), it[2].toDouble(), it[3].toDouble()))
             "f" -> {
-
                 val vertexIds = Vec3I(0, 0, 0)
                 val textureVertexIds = Vec3I(0, 0, 0)
+                val normalIds = Vec3I(0, 0, 0)
                 for (i in 1..3) {
                     val ids = it[i].split("/").map {
                         if (it.isEmpty()) return@map Int.MIN_VALUE + 1
@@ -98,18 +104,20 @@ fun parseObj(fileName: String): Model {
                     }
                     vertexIds[i - 1] = ids[0] - 1
                     textureVertexIds[i - 1] = ids[1] - 1
+                    normalIds[i - 1] = ids[2] - 1
                 }
-                result.triangles.add(vertexIds to textureVertexIds)
-                result.objects[objName]?.triangles?.add(vertexIds to textureVertexIds)
+
+                result.objects[objName]?.triangles?.add(Face(vertexIds, textureVertexIds, normalIds))
 
                 if (it.size == 5) {
                     val ids = it[4].split("/").map {
                         if (it.isEmpty()) return@map Int.MIN_VALUE + 1
                         it.toInt()
                     }
-                    val additionalFurnace = Vec3I(vertexIds[0], vertexIds[2], ids[0] - 1) to
-                            Vec3I(textureVertexIds[0], textureVertexIds[2], ids[1] - 1)
-                    result.triangles.add(additionalFurnace)
+                    val additionalFurnace = Face(
+                            Vec3I(vertexIds[0], vertexIds[2], ids[0] - 1),
+                            Vec3I(textureVertexIds[0], textureVertexIds[2], ids[1] - 1),
+                            Vec3I(normalIds[0], normalIds[2], ids[2] - 1))
                     result.objects[objName]?.triangles?.add(additionalFurnace)
                 }
             }
