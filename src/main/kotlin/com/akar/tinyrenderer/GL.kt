@@ -2,21 +2,37 @@ package com.akar.tinyrenderer
 
 import com.akar.tinyrenderer.math.Matrix
 import com.akar.tinyrenderer.math.Vec3D
-import com.akar.tinyrenderer.math.Vec3I
 import com.akar.tinyrenderer.math.Vec4D
 import com.akar.tinyrenderer.util.Face
-import com.akar.tinyrenderer.util.Material
-import ij.ImagePlus
-import kotlin.math.PI
-import kotlin.math.abs
-import kotlin.math.tan
 import ij.IJ
+import ij.ImagePlus
 import ij.process.ImageProcessor
 import java.awt.Color
+import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.ceil
+import kotlin.math.tan
 
 interface Shader {
-    fun vertex(vertices: List<Vec3D>): List<Vec4D>
+    var model: Matrix
+    var view: Matrix
+    var projection: Matrix
+    var viewport: Matrix
+
+    var clipCoords: List<Vec4D>
+    var screenCoords: List<Vec3D>
+    var ndc: List<Vec3D>
+
+    fun vertex()
+    fun clipFaces(faces: List<Face>) = faces.filter {
+        val vertexIndices = it.vertex
+        for (i in 0..2) {
+            val vertex = clipCoords[vertexIndices[i]].toVec3D()
+            if (vertex.x in -1.0..1.0 && vertex.y in -1.0..1.0 && vertex.z in 0.0..1.0)
+                return@filter true
+        }
+        false
+    }
     fun fragment(face: Face, baricentric: Vec3D): Int
 }
 
@@ -59,13 +75,13 @@ fun viewport(width: Double, height: Double): Matrix {
 
 fun ImageProcessor.triangle(face: Face,
                              zbuffer: DoubleArray,
-                            shader: MyShader) {
+                            shader: Shader) {
     val v0 = shader.clipCoords[face.vertex[0]]
     val v1 = shader.clipCoords[face.vertex[1]]
     val v2 = shader.clipCoords[face.vertex[2]]
-    val v0s = (viewport * v0).toVec3D()
-    val v1s = (viewport * v1).toVec3D()
-    val v2s = (viewport * v2).toVec3D()
+    val v0s = shader.screenCoords[face.vertex[0]]
+    val v1s = shader.screenCoords[face.vertex[1]]
+    val v2s = shader.screenCoords[face.vertex[2]]
     val xes = doubleArrayOf(v0s.x, v1s.x, v2s.x)
     val xmin = xes.min()!!
     val xmax = xes.max()!!
@@ -158,4 +174,20 @@ fun averageColor(vararg colors: Int): Int {
     return Color(objColors.sumBy { it.red } / objColors.size,
             objColors.sumBy { it.green } / objColors.size,
             objColors.sumBy { it.blue } / objColors.size).rgb
+}
+
+fun applyIntensity(rgb: Int, intensity: Double): Int {
+    val color = Color(rgb)
+    return Color((color.red * intensity).toInt(), (color.green * intensity).toInt(), (color.blue * intensity).toInt()).rgb
+}
+
+fun backfaceCulling(face: Face, shader: Shader): Boolean {
+    val v0 = shader.ndc[face.vertex[0]]
+    val v1 = shader.ndc[face.vertex[1]]
+    val v2 = shader.ndc[face.vertex[2]]
+
+    val side1 = v1 - v0
+    val side2 = v2 - v0
+    val intensity = side1.cross(side2).normalize() * Vec3D(0.0, 0.0, 1.0)
+    return intensity > 0
 }
