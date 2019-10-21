@@ -9,7 +9,7 @@ import com.akar.tinyrenderer.util.Face
 import com.akar.tinyrenderer.util.Material
 import kotlin.math.max
 
-class GouraudShader: Shader {
+class PhongShader : Shader {
     override var model = Matrix(3)
     override var projection = Matrix(4)
     override var view = Matrix(3)
@@ -20,13 +20,17 @@ class GouraudShader: Shader {
     var normals = listOf<Vec3D>()
     var material: Material = Material()
 
-    var intensities = listOf<Double>()
-
     override var clipCoords = listOf<Vec4D>()
     override var screenCoords = listOf<Vec3D>()
     override var ndc = listOf<Vec3D>()
 
+    var clipNormals = listOf<Vec3D>()
+
+    var clip = Matrix()
+
+
     var lightDir = Vec3D(.0, .0, 1.0)
+    var MIT= Matrix()
 
     fun load(vertices: List<Vec3D>, normals: List<Vec3D>, tvertices: List<Vec3D>) {
         this.vertices = vertices
@@ -35,10 +39,9 @@ class GouraudShader: Shader {
     }
 
     override fun vertex() {
-        val clip = projection * view * model
-        this.intensities = this.normals.mapIndexed { index, vector3 ->
-            (model.inverse().transpose() * vector3).normalize() * lightDir.normalize()
-        }
+        clip = projection * view * model
+        MIT = model.inverse().transpose()
+        clipNormals = normals.map { MIT * it }
         clipCoords = vertices.map { clip.homohenTimes(it) }
         ndc = clipCoords.map { it.toVec3D() }
         screenCoords = ndc.map { viewport * it }
@@ -48,8 +51,10 @@ class GouraudShader: Shader {
         val vt0 = tvertices[face.tvertvex[0]]
         val vt1 = tvertices[face.tvertvex[1]]
         val vt2 = tvertices[face.tvertvex[2]]
-        var intensity = intensities[face.normal[0]] * baricentric[0] + intensities[face.normal[1]] * baricentric[1] + intensities[face.normal[2]] * baricentric[2]
-        intensity = max(intensity, 0.0)
+        val l = lightDir.normalize()
+        val n =(clipNormals[face.normal[0]]*baricentric.x + clipNormals[face.normal[1]] * baricentric.y + clipNormals[face.normal[2]] * baricentric.z).normalize()
+        var intensity =  n * l
+        intensity = max(intensity, 0.1)
         val pt = vt0 * baricentric.x + vt1 * baricentric.y + vt2 * baricentric.z
         return applyIntensity(material[pt.x, pt.y], intensity)
     }

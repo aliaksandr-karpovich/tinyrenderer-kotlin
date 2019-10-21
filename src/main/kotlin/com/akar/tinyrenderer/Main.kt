@@ -3,6 +3,7 @@ package com.akar.tinyrenderer
 import com.akar.tinyrenderer.math.Matrix
 import com.akar.tinyrenderer.math.Vec3D
 import com.akar.tinyrenderer.shader.GouraudShader
+import com.akar.tinyrenderer.shader.PhongShader
 import com.akar.tinyrenderer.util.GifSequenceWriter
 import com.akar.tinyrenderer.util.parseObj
 import ij.IJ
@@ -35,7 +36,7 @@ fun main(args: Array<String>) {
     val writer = GifSequenceWriter(outputStream, BufferedImage.TYPE_INT_RGB, 100, true)
     val model = parseObj("obj/mech/mech.obj")
     model.normalizeVertices()
-    val shader = GouraudShader()
+    val shader = PhongShader()
     shader.view = lookat(camPos, focus, up)
     shader.lightDir = lightDir
     shader.viewport = viewport(imageWidth.toDouble(), imageHeight.toDouble())
@@ -47,9 +48,10 @@ fun main(args: Array<String>) {
         println(">$i")
         val alfa = 2 * PI / CIRCLE_SECTIONS * i
         val rotation = Matrix(arrayOf(
-                da(cos(alfa), 0.0, sin(alfa)),
-                da(0.0, 1.0, 0.0),
-                da(-sin(alfa), 0.0, cos(alfa))))
+                da(cos(alfa), 0.0, sin(alfa), 0.0),
+                da(0.0, 1.0, 0.0,0.0),
+                da(-sin(alfa), 0.0, cos(alfa), 0.0),
+                da(0.0, 0.0, 0.0, 1.0)))
         shader.model = rotation
         shader.load(model.vertices, model.vertexNormals, model.tVertices)
         shader.vertex()
