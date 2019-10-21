@@ -24,12 +24,14 @@ class PhongShader : Shader {
     override var screenCoords = listOf<Vec3D>()
     override var ndc = listOf<Vec3D>()
 
-    var clipNormals = listOf<Vec3D>()
+    var worldNormals = listOf<Vec3D>()
 
     var clip = Matrix()
 
 
     var lightDir = Vec3D(.0, .0, 1.0)
+
+    var lightPos = Vec3D(0.0, 0.0, 3.0)
     var MIT= Matrix()
 
     fun load(vertices: List<Vec3D>, normals: List<Vec3D>, tvertices: List<Vec3D>) {
@@ -41,21 +43,21 @@ class PhongShader : Shader {
     override fun vertex() {
         clip = projection * view * model
         MIT = model.inverse().transpose()
-        clipNormals = normals.map { MIT * it }
+        worldNormals = normals.map { MIT * it }
         clipCoords = vertices.map { clip.homohenTimes(it) }
         ndc = clipCoords.map { it.toVec3D() }
         screenCoords = ndc.map { viewport * it }
+        lightDir = lightDir.normalize()
     }
 
-    override fun fragment(face: Face, baricentric: Vec3D): Int {
+    override fun fragment(face: Face, bary: Vec3D): Int {
         val vt0 = tvertices[face.tvertvex[0]]
         val vt1 = tvertices[face.tvertvex[1]]
         val vt2 = tvertices[face.tvertvex[2]]
-        val l = lightDir.normalize()
-        val n =(clipNormals[face.normal[0]]*baricentric.x + clipNormals[face.normal[1]] * baricentric.y + clipNormals[face.normal[2]] * baricentric.z).normalize()
-        var intensity =  n * l
-        intensity = max(intensity, 0.1)
-        val pt = vt0 * baricentric.x + vt1 * baricentric.y + vt2 * baricentric.z
+        val l = (lightPos - (vertices[face.vertex[0]] * bary.x + vertices[face.vertex[1]] * bary.y + vertices[face.vertex[2]] * bary.z)).normalize()
+        val n =(worldNormals[face.normal[0]]*bary.x + worldNormals[face.normal[1]] * bary.y + worldNormals[face.normal[2]] * bary.z).normalize()
+        val intensity =   max(n * l, 0.25)
+        val pt = vt0 * bary.x + vt1 * bary.y + vt2 * bary.z
         return applyIntensity(material[pt.x, pt.y], intensity)
     }
 }

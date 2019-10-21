@@ -44,13 +44,13 @@ class GouraudShader: Shader {
         screenCoords = ndc.map { viewport * it }
     }
 
-    override fun fragment(face: Face, baricentric: Vec3D): Int {
+    override fun fragment(face: Face, bary: Vec3D): Int {
         val vt0 = tvertices[face.tvertvex[0]]
         val vt1 = tvertices[face.tvertvex[1]]
         val vt2 = tvertices[face.tvertvex[2]]
-        var intensity = intensities[face.normal[0]] * baricentric[0] + intensities[face.normal[1]] * baricentric[1] + intensities[face.normal[2]] * baricentric[2]
+        var intensity = intensities[face.normal[0]] * bary[0] + intensities[face.normal[1]] * bary[1] + intensities[face.normal[2]] * bary[2]
         intensity = max(intensity, 0.0)
-        val pt = vt0 * baricentric.x + vt1 * baricentric.y + vt2 * baricentric.z
+        val pt = vt0 * bary.x + vt1 * bary.y + vt2 * bary.z
         return applyIntensity(material[pt.x, pt.y], intensity)
     }
 }

@@ -16,7 +16,7 @@ import kotlin.Double.Companion.POSITIVE_INFINITY as POS_INF
 const val DEFAULT_NAME = "default"
 
 class Model {
-    val vertices = mutableListOf<Vec3D>()
+    var vertices = mutableListOf<Vec3D>()
     val vertexNormals = mutableListOf<Vec3D>()
     var triangles = mutableListOf<Face>()
 
@@ -69,13 +69,29 @@ class ModelObject {
 class Material {
     var mapKd: ImagePlus? = null
     var kd: Color? = null
+    var mapKs: ImagePlus? = null
+    var mapBump: ImagePlus? = null
 
     operator fun get(x: Double, y: Double): Int {
         if (mapKd != null) {
-            return mapKd!!.processor[(mapKd!!.processor.width * x).toInt(), (mapKd!!.processor.height * (1.0 - y)).toInt()]
+            val coords = coords(x, y, mapKd!!)
+            return mapKd!!.processor[coords.first, coords.second]
         }
         return kd!!.rgb
     }
+
+    fun normal(x: Double, y: Double): Int {
+        val coords = coords(x, y, mapBump!!)
+        return mapBump!!.processor[coords.first, coords.second]
+    }
+
+    fun spec(x: Double, y: Double): Int {
+        val coords = coords(x, y, mapKs!!)
+        return mapKs!!.processor[coords.first, coords.second]
+    }
+
+    private fun coords(x: Double, y: Double, texture: ImagePlus) =
+            Pair((texture.processor.width * x).toInt(), (texture.processor.height * (1.0 - y)).toInt())
 }
 
 fun parseObj(fileName: String): Model {
@@ -115,9 +131,9 @@ fun parseObj(fileName: String): Model {
                         it.toInt()
                     }
                     val additionalFurnace = Face(
-                            Vec3I(vertexIds[0], vertexIds[2], ids[0] - 1),
-                            Vec3I(textureVertexIds[0], textureVertexIds[2], ids[1] - 1),
-                            Vec3I(normalIds[0], normalIds[2], ids[2] - 1))
+                            Vec3I(vertexIds[2], ids[0] - 1, vertexIds[0]),
+                            Vec3I(textureVertexIds[2],ids[1] - 1, textureVertexIds[0] ),
+                            Vec3I(normalIds[2],ids[2] - 1, normalIds[0] ))
                     result.objects[objName]?.triangles?.add(additionalFurnace)
                 }
             }
@@ -149,6 +165,13 @@ fun parseMtl(parent: String, fileName: String): MutableMap<String, Material> {
                 val rgbf = it.drop(1).map { it.toFloat() }
                 result[matName]?.kd = Color(rgbf[0], rgbf[1], rgbf[2])
             }
+            "map_Ks" -> {
+                result[matName]?.mapKs = IJ.openImage("${file.parent}/${it[1]}")
+            }
+            "map_Bump" -> {
+                result[matName]?.mapBump = IJ.openImage("${file.parent}/${it[1]}")
+            }
+
         }
     }
     return result

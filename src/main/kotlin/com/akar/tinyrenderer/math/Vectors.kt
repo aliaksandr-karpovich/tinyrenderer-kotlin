@@ -65,11 +65,18 @@ open class Vector3<T : Number>(var x: T, var y: T, var z: T) {
     override fun toString(): String {
         return "[$x, $y, $z]"
     }
+
+    fun toDoubleArray() = doubleArrayOf(x.toDouble(),y.toDouble(),z.toDouble())
 }
 
 class Vector4<T : Number>(x: T, y: T, z: T, var w: T) : Vector3<T>(x, y, z) {
 
-    fun toVec3D(): Vec3D = Vec3D(x.toDouble() / w.toDouble(), y.toDouble() / w.toDouble(), z.toDouble() / w.toDouble())
+    constructor(vec3: Vector3<T>, a : T): this(vec3.x, vec3.y, vec3.z, a)
+
+    fun toVec3D(includeW: Boolean = true): Vec3D {
+        if (includeW) return Vec3D(x.toDouble() / w.toDouble(), y.toDouble() / w.toDouble(), z.toDouble() / w.toDouble())
+        return Vec3D(x.toDouble(), y.toDouble(), z.toDouble())
+    }
 
     override operator fun get(i: Int): T =
             when (i) {
