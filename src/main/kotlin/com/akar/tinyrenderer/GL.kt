@@ -3,6 +3,7 @@ package com.akar.tinyrenderer
 import com.akar.tinyrenderer.math.Matrix
 import com.akar.tinyrenderer.math.Vec3D
 import com.akar.tinyrenderer.math.Vec4D
+import com.akar.tinyrenderer.shader.LightShader
 import com.akar.tinyrenderer.util.Face
 import ij.IJ
 import ij.ImagePlus
@@ -33,7 +34,7 @@ interface Shader {
         }
         false
     }
-    fun fragment(face: Face, baricentric: Vec3D): Int
+    fun fragment(face: Face, bary: Vec3D): Int
 }
 
 fun lookat(cameraPosition: Vec3D, focus: Vec3D, up: Vec3D): Matrix {
@@ -102,9 +103,13 @@ fun ImageProcessor.triangle(face: Face,
             baryClip /= baryClip.x + baryClip.y + baryClip.z
             if (baryScreen.x < 0 || baryScreen.y < 0 || baryScreen.z < 0) continue
             val z = v0.z * baryClip.x + v1.z * baryClip.y + v2.z * baryClip.z
+//            if (shader is LightShader) {
+//                this[x,y] = Color.white.rgb
+//            }
             if (zbuffer[x, y] > z) {
                 zbuffer[x, y] = z
                 this[x, y] = shader.fragment(face, baryClip)
+
             }
         }
     }
