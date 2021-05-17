@@ -88,8 +88,8 @@ fun ImageProcessor.triangle(face: Face,
     val xmax = xes.max()!!
 
     val ys = doubleArrayOf(v0s.y, v1s.y, v2s.y)
-    val ymin = ys.min()!!
-    val ymax = ys.max()!!
+    val ymin = ys.minOrNull()!!
+    val ymax = ys.maxOrNull()!!
 
     operator fun DoubleArray.get(x: Int, y: Int) = get(y * width + x)
     operator fun DoubleArray.set(x: Int, y: Int, value: Double) = set(y * width + x, value)

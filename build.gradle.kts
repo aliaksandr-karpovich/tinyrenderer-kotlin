@@ -3,8 +3,14 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     java
     application
-    kotlin("jvm") version "1.3.50"
-    kotlin("kapt") version "1.3.50"
+    kotlin("jvm") version "1.4.10"
+    kotlin("kapt") version "1.4.10"
+
+    id("org.openjfx.javafxplugin") version "0.0.8"
+}
+
+javafx {
+    modules = listOf("javafx.controls", "javafx.fxml")
 }
 
 group = "com.example"
@@ -27,6 +33,9 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.1")
     implementation("net.imagej:ij:1.52q")
+    implementation("no.tornado:tornadofx:1.7.19") {
+        exclude("org.jetbrains.kotlin")
+    }
 }
 
 tasks.withType<KotlinCompile> {

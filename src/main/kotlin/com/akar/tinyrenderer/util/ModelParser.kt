@@ -53,7 +53,20 @@ class Model {
 }
 
 data class Face(val vertex: Vec3I, val tvertvex: Vec3I, val normal: Vec3I) {
+    fun reverse() {
+        var buff: Int = 0
+        buff = vertex[0]
+        vertex[0] = vertex[2]
+        vertex[2] = buff
 
+        buff = tvertvex[0]
+        tvertvex[0] = tvertvex[2]
+        tvertvex[2] = buff
+
+        buff = normal[0]
+        normal[0] = normal[2]
+        normal[2] = buff
+    }
 }
 
 class ModelObject {
@@ -69,6 +82,7 @@ class ModelObject {
 class Material {
     var mapKd: ImagePlus? = null
     var kd: Color? = null
+    var ks: Color? = null
     var mapKs: ImagePlus? = null
     var mapBump: ImagePlus? = null
 
@@ -81,11 +95,17 @@ class Material {
     }
 
     fun normal(x: Double, y: Double): Int {
+        if (mapBump == null) {
+            return Color(0.5f, 0.5f, 1.0f).rgb
+        }
         val coords = coords(x, y, mapBump!!)
         return mapBump!!.processor[coords.first, coords.second]
     }
 
     fun spec(x: Double, y: Double): Double {
+        if (mapKs == null) {
+            return ks!!.getColorComponents(null)[2].toDouble()
+        }
         val coords = coords(x, y, mapKs!!)
         return Color(mapKs!!.processor[coords.first, coords.second]).getColorComponents(null)[2].toDouble()
     }
@@ -164,6 +184,10 @@ fun parseMtl(parent: String, fileName: String): MutableMap<String, Material> {
             "Kd" -> {
                 val rgbf = it.drop(1).map { it.toFloat() }
                 result[matName]?.kd = Color(rgbf[0], rgbf[1], rgbf[2])
+            }
+            "Ks" -> {
+                val rgbf = it.drop(1).map { it.toFloat() }
+                result[matName]?.ks = Color(rgbf[0], rgbf[1], rgbf[2])
             }
             "map_Ks" -> {
                 result[matName]?.mapKs = IJ.openImage("${file.parent}/${it[1]}")
