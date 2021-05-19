@@ -1,5 +1,7 @@
 package com.akar.tinyrenderer
 
+import com.akar.tinyrenderer.gui.Direction
+import com.akar.tinyrenderer.gui.Rotation
 import com.akar.tinyrenderer.gui.SimpleModelForSelect
 import com.akar.tinyrenderer.math.Matrix
 import com.akar.tinyrenderer.math.Vec3D
@@ -31,7 +33,14 @@ val focus = Vec3D(0.0, 0.0, 0.0)
 val up = Vec3D(0.0, 1.0, 0.0)
 val lightDir = Vec3D(1.0, 1.0, 1.0).normalize()
 
-fun render(modelInfo: SimpleModelForSelect, imageview: ImageView) {
+fun render(
+    modelInfo: SimpleModelForSelect,
+    imageview: ImageView,
+    modelRotationSwitch: Rotation = Rotation.Y,
+    modelRotationDirection: Direction = Direction.COUNTER_CLOCKWISE,
+    lightRotationSwitch: Rotation = Rotation.Y,
+    lightRotationDirection: Direction = Direction.COUNTER_CLOCKWISE
+) {
     val imageWidth: Int = DEFAULT_IMAGE_WIDTH
     val imageHeight: Int = DEFAULT_IMAGE_HEIGHT
     val startTime = System.currentTimeMillis()
@@ -50,7 +59,6 @@ fun render(modelInfo: SimpleModelForSelect, imageview: ImageView) {
         model.materials[DEFAULT_NAME]!!.mapKs = IJ.openImage(modelInfo.specmappath)
     }
 
-//    model.objects["4_LowerBody_M"]?.triangles?.forEach{it.reverse()}
 
     val light = parseObj("obj/light/light.obj")
     light.normalizeVertices()
@@ -73,39 +81,20 @@ fun render(modelInfo: SimpleModelForSelect, imageview: ImageView) {
         image.processor.fill()
         println(">$i")
         val alfa = 2 * PI / CIRCLE_SECTIONS * i
-        val rotation = Matrix(
-            arrayOf(
-                da(cos(alfa), 0.0, sin(alfa), 0.0),
-                da(0.0, 1.0, 0.0, 0.0),
-                da(-sin(alfa), 0.0, cos(alfa), 0.0),
-                da(0.0, 0.0, 0.0, 1.0)
-            )
-        )
-        val alfaModel = alfa * -1 + PI / 2;
-        val rotationModel = Matrix(
-            arrayOf(
-                da(cos(alfaModel), 0.0, sin(alfaModel), 0.0),
-                da(0.0, 1.0, 0.0, 0.0),
-                da(-sin(alfaModel), 0.0, cos(alfaModel), 0.0),
-                da(0.0, 0.0, 0.0, 1.0)
-            )
-        )
-        val xrotation = Matrix(
-            arrayOf(
-                da(1.0, 0.0, 0.0, 0.0),
-                da(0.0, cos(-alfaModel), -sin(-alfaModel), 0.0),
-                da(0.0, sin(-alfaModel), cos(-alfaModel), 0.0),
-                da(0.0, 0.0, 0.0, 1.0)
-            )
-        )
+
+        val modelRotation = pivotRotation(modelRotationSwitch, alfaFromDirection(modelRotationDirection, alfa))
+
+        val lightRotation = pivotRotation(lightRotationSwitch, alfaFromDirection(lightRotationDirection, alfa))
+
         var transfer = Matrix(4)
-        transfer[3][0] = 0.3
+        transfer[3][0] = 0.0
         transfer[3][1] = 0.0
         transfer[3][2] = 1.25
-        shader.model = rotation
+        shader.model = modelRotation
         shader.load(model.vertices, model.vertexNormals, model.tVertices)
         shader.vertex()
-        shader.lightPos = Vec3D(0.0, 0.0, 4.0) //Vec3D(sin(alfa) * 1.25 , 0.0, cos(alfa)*1.25 )
+        shader.lightPos = lightRotation * Vec3D(0.0, 0.0, 1.25)
+//        shader.lightPos =  Vec3D(-1.0, 0.0, 0.0)
         for (obj in model.objects.values) {
             shader.material = model.materials[obj.material]!!
             val faces = shader.clipFaces(obj.triangles)
@@ -116,15 +105,17 @@ fun render(modelInfo: SimpleModelForSelect, imageview: ImageView) {
             }
         }
 
-//        lightShader.model = rotation * transfer.transpose()
-//        lightShader.load(light.vertices)
-//        lightShader.vertex()
-//        for (obj in light.objects.values) {
-//            val faces = obj.triangles
-//            faces.forEach {
-//                image.processor.triangle(it, zbuffer, lightShader)
-//            }
-//        }
+//        ligtRotarion
+
+        lightShader.model = lightRotation * transfer.transpose()
+        lightShader.load(light.vertices)
+        lightShader.vertex()
+        for (obj in light.objects.values) {
+            val faces = obj.triangles
+            faces.forEach {
+                image.processor.triangle(it, zbuffer, lightShader)
+            }
+        }
         image.processor.flipVertical()
         println("<$i ${System.currentTimeMillis() - start}")
         writer.writeToSequence(image.bufferedImage)
@@ -133,3 +124,39 @@ fun render(modelInfo: SimpleModelForSelect, imageview: ImageView) {
     writer.close()
     println(System.currentTimeMillis() - startTime)
 }
+
+private fun alfaFromDirection(
+    modelRotationDirection: Direction,
+    alfa: Double
+) = when (modelRotationDirection) {
+    Direction.COUNTER_CLOCKWISE -> alfa
+    Direction.CLOCKWISE -> -alfa
+    Direction.NONE -> 0.0
+}
+
+private fun pivotRotation(
+    modelRotationSwitch: Rotation,
+    alfa: Double
+) = when (modelRotationSwitch) {
+    Rotation.X -> xrotation(alfa)
+    Rotation.X_AND_Y -> xrotation(alfa) * yrotation(alfa)
+    Rotation.Y -> yrotation(alfa)
+}
+
+private fun yrotation(alfa: Double) = Matrix(
+    arrayOf(
+        da(cos(alfa), 0.0, sin(alfa), 0.0),
+        da(0.0, 1.0, 0.0, 0.0),
+        da(-sin(alfa), 0.0, cos(alfa), 0.0),
+        da(0.0, 0.0, 0.0, 1.0)
+    )
+)
+
+private fun xrotation(alfa: Double) = Matrix(
+    arrayOf(
+        da(1.0, 0.0, 0.0, 0.0),
+        da(0.0, cos(-alfa), -sin(-alfa), 0.0),
+        da(0.0, sin(-alfa), cos(-alfa), 0.0),
+        da(0.0, 0.0, 0.0, 1.0)
+    )
+)
