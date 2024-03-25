@@ -3,8 +3,8 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     java
     application
-    kotlin("jvm") version "1.4.10"
-    kotlin("kapt") version "1.4.10"
+    kotlin("jvm") version "1.9.23"
+    kotlin("kapt") version "1.9.23"
 
     id("org.openjfx.javafxplugin") version "0.0.8"
 }
@@ -13,9 +13,15 @@ javafx {
     modules = listOf("javafx.controls", "javafx.fxml")
 }
 
-group = "com.example"
-version = "0.0.1-SNAPSHOT"
-java.sourceCompatibility = JavaVersion.VERSION_1_8
+application {
+    group = "com.example"
+    version = "0.0.1-SNAPSHOT"
+    mainClass.set("com.akar.tinyrenderer.MainKt")
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+}
 
 
 configurations {
@@ -45,16 +51,13 @@ tasks.withType<KotlinCompile> {
     }
 }
 tasks.withType<Jar> {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     manifest {
         attributes["Main-Class"] = "com.akar.tinyrenderer.MainKt"
     }
     from({
         configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) }
     })
-}
-
-application {
-    mainClassName = "com.akar.tinyrenderer.MainKt"
 }
 
 tasks {

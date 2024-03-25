@@ -84,8 +84,8 @@ fun ImageProcessor.triangle(face: Face,
     val v1s = shader.screenCoords[face.vertex[1]]
     val v2s = shader.screenCoords[face.vertex[2]]
     val xes = doubleArrayOf(v0s.x, v1s.x, v2s.x)
-    val xmin = xes.min()!!
-    val xmax = xes.max()!!
+    val xmin = xes.min()
+    val xmax = xes.max()
 
     val ys = doubleArrayOf(v0s.y, v1s.y, v2s.y)
     val ymin = ys.minOrNull()!!
@@ -176,9 +176,9 @@ fun ImagePlus.antiAlias(level: Int): ImagePlus {
 
 fun averageColor(vararg colors: Int): Int {
     val objColors = colors.map { Color(it) }
-    return Color(objColors.sumBy { it.red } / objColors.size,
-            objColors.sumBy { it.green } / objColors.size,
-            objColors.sumBy { it.blue } / objColors.size).rgb
+    return Color(objColors.sumOf { it.red } / objColors.size,
+            objColors.sumOf { it.green } / objColors.size,
+            objColors.sumOf { it.blue } / objColors.size).rgb
 }
 
 fun applyIntensity(rgb: Int, intensity: Double): Int {
