@@ -3,7 +3,6 @@ package com.akar.tinyrenderer
 import com.akar.tinyrenderer.math.Matrix
 import com.akar.tinyrenderer.math.Vec3D
 import com.akar.tinyrenderer.math.Vec4D
-import com.akar.tinyrenderer.shader.LightShader
 import com.akar.tinyrenderer.util.Face
 import ij.IJ
 import ij.ImagePlus

@@ -93,7 +93,7 @@ class MyView : View() {
 
     private fun VBox.directionListView(): ListView<Direction> =
             listview {
-                items.addAll(Direction.values())
+                items.addAll(Direction.entries.toTypedArray())
                 selectionModel.selectFirst()
                 selectionModel.selectionMode = SelectionMode.SINGLE
                 prefHeight = 75.0
@@ -101,7 +101,7 @@ class MyView : View() {
 
     private fun VBox.rotateListView(): ListView<Rotation> =
             listview {
-                items.addAll(Rotation.values())
+                items.addAll(Rotation.entries.toTypedArray())
                 selectionModel.selectFirst()
                 selectionModel.selectionMode = SelectionMode.SINGLE
                 prefHeight = 75.0
