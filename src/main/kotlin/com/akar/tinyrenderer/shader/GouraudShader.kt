@@ -1,6 +1,5 @@
 package com.akar.tinyrenderer.shader
 
-import com.akar.tinyrenderer.Shader
 import com.akar.tinyrenderer.applyIntensity
 import com.akar.tinyrenderer.math.Matrix
 import com.akar.tinyrenderer.math.Vec3D
@@ -36,7 +35,7 @@ class GouraudShader: Shader {
 
     override fun vertex() {
         val clip = projection * view * model
-        this.intensities = this.normals.mapIndexed { index, vector3 ->
+        this.intensities = this.normals.mapIndexed { _, vector3 ->
             (model.inverse().transpose() * vector3).normalize() * lightDir.normalize()
         }
         clipCoords = vertices.map { clip.homohenTimes(it) }

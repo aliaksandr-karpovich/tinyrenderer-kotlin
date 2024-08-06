@@ -1,6 +1,5 @@
 package com.akar.tinyrenderer.shader
 
-import com.akar.tinyrenderer.Shader
 import com.akar.tinyrenderer.math.Matrix
 import com.akar.tinyrenderer.math.Vec3D
 import com.akar.tinyrenderer.math.Vec4D

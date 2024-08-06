@@ -2,7 +2,7 @@ package com.akar.tinyrenderer
 
 import com.akar.tinyrenderer.math.Matrix
 import com.akar.tinyrenderer.math.Vec3D
-import com.akar.tinyrenderer.math.Vec4D
+import com.akar.tinyrenderer.shader.Shader
 import com.akar.tinyrenderer.util.Face
 import ij.IJ
 import ij.ImagePlus
@@ -12,29 +12,6 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.tan
-
-interface Shader {
-    var model: Matrix
-    var view: Matrix
-    var projection: Matrix
-    var viewport: Matrix
-
-    var clipCoords: List<Vec4D>
-    var screenCoords: List<Vec3D>
-    var ndc: List<Vec3D>
-
-    fun vertex()
-    fun clipFaces(faces: List<Face>) = faces.filter {
-        val vertexIndices = it.vertex
-        for (i in 0..2) {
-            val vertex = clipCoords[vertexIndices[i]].toVec3D()
-            if (vertex.x in -1.0..1.0 && vertex.y in -1.0..1.0 && vertex.z in 0.0..1.0)
-                return@filter true
-        }
-        false
-    }
-    fun fragment(face: Face, bary: Vec3D): Int
-}
 
 fun lookat(cameraPosition: Vec3D, focus: Vec3D, up: Vec3D): Matrix {
     val z = (cameraPosition - focus).normalize()
@@ -73,9 +50,7 @@ fun viewport(width: Double, height: Double): Matrix {
 }
 
 
-fun ImageProcessor.triangle(face: Face,
-                             zbuffer: DoubleArray,
-                            shader: Shader) {
+fun ImageProcessor.triangle(face: Face, zbuffer: DoubleArray, shader: Shader) {
     val v0 = shader.clipCoords[face.vertex[0]]
     val v1 = shader.clipCoords[face.vertex[1]]
     val v2 = shader.clipCoords[face.vertex[2]]

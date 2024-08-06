@@ -54,7 +54,7 @@ class Model {
 
 data class Face(val vertex: Vec3I, val tvertvex: Vec3I, val normal: Vec3I) {
     fun reverse() {
-        var buff: Int = 0
+        var buff = 0
         buff = vertex[0]
         vertex[0] = vertex[2]
         vertex[2] = buff
@@ -111,7 +111,7 @@ class Material {
     }
 
     private fun coords(x: Double, y: Double, texture: ImagePlus) =
-            Pair((texture.processor.width * x).toInt(), (texture.processor.height * (1.0 - y)).toInt())
+        Pair((texture.processor.width * x).toInt(), (texture.processor.height * (1.0 - y)).toInt())
 }
 
 fun parseObj(fileName: String): Model {
@@ -119,51 +119,61 @@ fun parseObj(fileName: String): Model {
     val file = File(fileName)
     val reader = FileReader(file)
     var objName = DEFAULT_NAME
-    reader.readLines().asSequence().map { it.split(" ").filter { it.isNotEmpty() } }.filter { it.isNotEmpty() }.forEach {
-        when (it[0]) {
-            "mtllib" -> result.materials.putAll(parseMtl(file.parent, it[1]))
-            "o" -> {
-                objName = it[1]
-                result.objects[objName] = ModelObject()
-            }
-            "usemtl" -> result.objects[objName]?.material = it[1]
-            "v" -> result.vertices.add(Vec3D(it[1].toDouble(), it[2].toDouble(), it[3].toDouble()))
-            "vn" -> result.vertexNormals.add(Vec3D(it[1].toDouble(), it[2].toDouble(), it[3].toDouble()))
-            "f" -> {
-                val vertexIds = Vec3I(0, 0, 0)
-                val textureVertexIds = Vec3I(0, 0, 0)
-                val normalIds = Vec3I(0, 0, 0)
-                for (i in 1..3) {
-                    val ids = it[i].split("/").map {
-                        if (it.isEmpty()) return@map Int.MIN_VALUE + 1
-                        it.toInt()
-                    }
-                    vertexIds[i - 1] = ids[0] - 1
-                    textureVertexIds[i - 1] = ids[1] - 1
-                    normalIds[i - 1] = ids[2] - 1
+    reader.readLines()
+        .asSequence()
+        .map {
+            it.split(" ")
+                .filter { it.isNotEmpty() }
+        }
+        .filter { it.isNotEmpty() }
+        .forEach {
+            when (it[0]) {
+                "mtllib" -> result.materials.putAll(parseMtl(file.parent, it[1]))
+                "o" -> {
+                    objName = it[1]
+                    result.objects[objName] = ModelObject()
                 }
 
-                result.objects[objName]?.triangles?.add(Face(vertexIds, textureVertexIds, normalIds))
-
-                if (it.size == 5) {
-                    val ids = it[4].split("/").map {
-                        if (it.isEmpty()) return@map Int.MIN_VALUE + 1
-                        it.toInt()
+                "usemtl" -> result.objects[objName]?.material = it[1]
+                "v" -> result.vertices.add(Vec3D(it[1].toDouble(), it[2].toDouble(), it[3].toDouble()))
+                "vn" -> result.vertexNormals.add(Vec3D(it[1].toDouble(), it[2].toDouble(), it[3].toDouble()))
+                "f" -> {
+                    val vertexIds = Vec3I(0, 0, 0)
+                    val textureVertexIds = Vec3I(0, 0, 0)
+                    val normalIds = Vec3I(0, 0, 0)
+                    for (i in 1..3) {
+                        val ids = it[i].split("/").map {
+                            if (it.isEmpty()) return@map Int.MIN_VALUE + 1
+                            it.toInt()
+                        }
+                        vertexIds[i - 1] = ids[0] - 1
+                        textureVertexIds[i - 1] = ids[1] - 1
+                        normalIds[i - 1] = ids[2] - 1
                     }
-                    val additionalFurnace = Face(
+
+                    result.objects[objName]?.triangles?.add(Face(vertexIds, textureVertexIds, normalIds))
+
+                    if (it.size == 5) {
+                        val ids = it[4].split("/").map {
+                            if (it.isEmpty()) return@map Int.MIN_VALUE + 1
+                            it.toInt()
+                        }
+                        val additionalFurnace = Face(
                             Vec3I(vertexIds[2], ids[0] - 1, vertexIds[0]),
-                            Vec3I(textureVertexIds[2],ids[1] - 1, textureVertexIds[0] ),
-                            Vec3I(normalIds[2],ids[2] - 1, normalIds[0] ))
-                    result.objects[objName]?.triangles?.add(additionalFurnace)
+                            Vec3I(textureVertexIds[2], ids[1] - 1, textureVertexIds[0]),
+                            Vec3I(normalIds[2], ids[2] - 1, normalIds[0])
+                        )
+                        result.objects[objName]?.triangles?.add(additionalFurnace)
+                    }
                 }
-            }
-            "vt" -> {
-                it.drop(1).map { it.toDouble() }.also {
-                    result.tVertices.add(Vec3D(it[0], it[1], if (it.size > 2) it[2] else 0.0))
+
+                "vt" -> {
+                    it.drop(1).map { it.toDouble() }.also {
+                        result.tVertices.add(Vec3D(it[0], it[1], if (it.size > 2) it[2] else 0.0))
+                    }
                 }
             }
         }
-    }
     return result
 }
 
@@ -172,31 +182,43 @@ fun parseMtl(parent: String, fileName: String): MutableMap<String, Material> {
     val file = File("$parent/$fileName")
     val fileReader = FileReader(file)
     var matName = ""
-    fileReader.readLines().asSequence().map { it.split(" ").filter { it.isNotEmpty() } }.filter { it.isNotEmpty() }.forEach {
-        when (it[0]) {
-            "newmtl" -> {
-                matName = it[1]
-                result[matName] = Material()
-            }
-            "map_Kd" -> {
-                result[matName]?.mapKd = IJ.openImage("${file.parent}/${it[1]}")
-            }
-            "Kd" -> {
-                val rgbf = it.drop(1).map { it.toFloat() }
-                result[matName]?.kd = Color(rgbf[0], rgbf[1], rgbf[2])
-            }
-            "Ks" -> {
-                val rgbf = it.drop(1).map { it.toFloat() }
-                result[matName]?.ks = Color(rgbf[0], rgbf[1], rgbf[2])
-            }
-            "map_Ks" -> {
-                result[matName]?.mapKs = IJ.openImage("${file.parent}/${it[1]}")
-            }
-            "map_Bump" -> {
-                result[matName]?.mapBump = IJ.openImage("${file.parent}/${it[1]}")
-            }
-
+    fileReader.readLines()
+        .asSequence()
+        .map {
+            it.split(" ")
+                .filter { it.isNotEmpty() }
         }
-    }
+        .filter { it.isNotEmpty() }
+        .forEach {
+            when (it[0]) {
+                "newmtl" -> {
+                    matName = it[1]
+                    result[matName] = Material()
+                }
+
+                "map_Kd" -> {
+                    result[matName]?.mapKd = IJ.openImage("${file.parent}/${it[1]}")
+                }
+
+                "Kd" -> {
+                    val rgbf = it.drop(1).map { it.toFloat() }
+                    result[matName]?.kd = Color(rgbf[0], rgbf[1], rgbf[2])
+                }
+
+                "Ks" -> {
+                    val rgbf = it.drop(1).map { it.toFloat() }
+                    result[matName]?.ks = Color(rgbf[0], rgbf[1], rgbf[2])
+                }
+
+                "map_Ks" -> {
+                    result[matName]?.mapKs = IJ.openImage("${file.parent}/${it[1]}")
+                }
+
+                "map_Bump" -> {
+                    result[matName]?.mapBump = IJ.openImage("${file.parent}/${it[1]}")
+                }
+
+            }
+        }
     return result
 }

@@ -201,21 +201,9 @@ class Matrix {
         var a = this
         if (a.isSquare && b.isSquare && a.n != b.n) {
             if (a.n < b.n) {
-                a = Matrix(Array(b.n) { i ->
-                    DoubleArray(b.n) { j ->
-                        if (i < a.n && j < a.n) a.elements[i][j]
-                        else if (i == j) 1.0
-                        else .0
-                    }
-                })
+                a = enhance(a, b.n)
             } else {
-                b = Matrix(Array(a.n) { i ->
-                    DoubleArray(a.n) { j ->
-                        if (i < b.n && j < b.n) b.elements[i][j]
-                        else if (i == j) 1.0
-                        else .0
-                    }
-                })
+                b = enhance(b, a.n)
             }
         }
         if (a.m != b.n) throw Exception("Matrices size don't match for multiply")
@@ -229,6 +217,14 @@ class Matrix {
         }
         return result
     }
+
+    private fun enhance(a: Matrix, n: Int) = Matrix(Array(n) { i ->
+        DoubleArray(n) { j ->
+            if (i < a.n && j < a.n) a.elements[i][j]
+            else if (i == j) 1.0
+            else .0
+        }
+    })
 
     operator fun times(n: Double): Matrix {
         val result = Matrix(this)

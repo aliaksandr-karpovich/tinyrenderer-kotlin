@@ -86,7 +86,7 @@ fun render(
 
         val lightRotation = pivotRotation(lightRotationSwitch, alfaFromDirection(lightRotationDirection, alfa))
 
-        var transfer = Matrix(4)
+        val transfer = Matrix(4)
         transfer[3][0] = 0.0
         transfer[3][1] = 0.0
         transfer[3][2] = 1.25
