@@ -16,7 +16,7 @@ javafx {
 application {
     group = "com.example"
     version = "0.0.1-SNAPSHOT"
-    mainClass.set("com.akar.tinyrenderer.MainKt")
+    mainClass.set("com.akar.tinyrenderer.gui.AppKt")
 }
 
 java {
@@ -53,7 +53,7 @@ tasks.withType<KotlinCompile> {
 tasks.withType<Jar> {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     manifest {
-        attributes["Main-Class"] = "com.akar.tinyrenderer.MainKt"
+        attributes["Main-Class"] = "com.akar.tinyrenderer.gui.AppKt"
     }
     from({
         configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) }
