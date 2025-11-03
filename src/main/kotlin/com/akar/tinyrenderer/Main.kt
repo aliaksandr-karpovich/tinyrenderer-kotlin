@@ -23,8 +23,8 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.doubleArrayOf as da
 
-const val DEFAULT_IMAGE_WIDTH = 512
-const val DEFAULT_IMAGE_HEIGHT = 512
+const val DEFAULT_IMAGE_WIDTH = 1024
+const val DEFAULT_IMAGE_HEIGHT = 1024
 const val CIRCLE_SECTIONS = 36
 const val FOV = 90.0
 
