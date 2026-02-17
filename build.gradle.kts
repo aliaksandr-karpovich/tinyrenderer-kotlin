@@ -1,10 +1,11 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    java
-    application
-    kotlin("jvm") version "2.2.21"
-    kotlin("kapt") version "2.2.21"
+    id("java")
+    id("application")
+    kotlin("jvm") version "2.3.10"
+    kotlin("kapt") version "2.3.10"
 
     id("org.openjfx.javafxplugin") version "0.1.0"
 }
@@ -47,6 +48,7 @@ dependencies {
 tasks.withType<KotlinCompile> {
     compilerOptions {
         freeCompilerArgs = listOf("-Xjsr305=strict")
+        jvmTarget = JvmTarget.JVM_21
     }
 }
 tasks.withType<Jar> {

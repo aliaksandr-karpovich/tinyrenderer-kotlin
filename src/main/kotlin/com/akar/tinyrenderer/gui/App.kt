@@ -59,13 +59,13 @@ class MyView : View() {
 
             vbox {
                 minWidth = 400.0
-                label("Вращение модели")
+                label("Model rotation")
                 modelRotateListView = rotateListView()
                 modelDirectionListView = directionListView()
             }
             vbox {
                 minWidth = 400.0
-                label("Вращение света")
+                label("Light source rotation")
                 lightRotateListView = rotateListView()
                 lightDirectionListView = directionListView()
 
@@ -127,14 +127,14 @@ data class SimpleModelForSelect(
 }
 
 enum class Rotation(private val label: String) {
-    Y("Вокруг оси Y"), X("Вокруг оси X"), X_AND_Y("Вокруг осей X и Y");
+    Y("Around axis Y"), X("Around axis X"), X_AND_Y("Around axis X and Y");
 
     override fun toString() = label
 
 }
 
 enum class Direction(private val label: String) {
-    COUNTER_CLOCKWISE("Против часовой стрелки"), CLOCKWISE("По часовой стрелке"), NONE("Не вращать");
+    COUNTER_CLOCKWISE("Counter clockwise"), CLOCKWISE("Clockwise"), NONE("Don't rotate");
 
     override fun toString() = label
 }

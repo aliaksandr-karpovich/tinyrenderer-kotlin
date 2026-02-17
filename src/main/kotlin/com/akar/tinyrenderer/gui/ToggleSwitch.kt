@@ -21,8 +21,8 @@ class ToggleSwitch : HBox() {
     private fun init() {
         label.text = Direction.CLOCKWISE.toString()
         children.addAll(label, button)
-        button.onAction = EventHandler { e: ActionEvent? -> switchedOn.set(!switchedOn.get()) }
-        label.onMouseClicked = EventHandler { e: MouseEvent? -> switchedOn.set(!switchedOn.get()) }
+        button.onAction = EventHandler { _: ActionEvent? -> switchedOn.set(!switchedOn.get()) }
+        label.onMouseClicked = EventHandler { _: MouseEvent? -> switchedOn.set(!switchedOn.get()) }
         setStyle()
         bindProperties()
     }

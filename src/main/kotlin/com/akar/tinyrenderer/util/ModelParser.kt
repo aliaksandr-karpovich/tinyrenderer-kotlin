@@ -54,8 +54,7 @@ class Model {
 
 data class Face(val vertex: Vec3I, val tvertvex: Vec3I, val normal: Vec3I) {
     fun reverse() {
-        var buff = 0
-        buff = vertex[0]
+        var buff: Int = vertex[0]
         vertex[0] = vertex[2]
         vertex[2] = buff
 
