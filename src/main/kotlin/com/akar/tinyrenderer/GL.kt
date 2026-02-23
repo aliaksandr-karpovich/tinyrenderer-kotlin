@@ -89,6 +89,45 @@ fun ImageProcessor.triangle(face: Face, zbuffer: DoubleArray, shader: Shader) {
     }
 }
 
+
+fun ImageProcessor.depthTriangle(face: Face, zbuffer: DoubleArray, shader: Shader) {
+    val v0 = shader.clipCoords[face.vertex[0]]
+    val v1 = shader.clipCoords[face.vertex[1]]
+    val v2 = shader.clipCoords[face.vertex[2]]
+    val v0s = shader.screenCoords[face.vertex[0]]
+    val v1s = shader.screenCoords[face.vertex[1]]
+    val v2s = shader.screenCoords[face.vertex[2]]
+
+    val xes = doubleArrayOf(v0s.x, v1s.x, v2s.x)
+    val xmin = xes.min()
+    val xmax = xes.max()
+
+    val ys = doubleArrayOf(v0s.y, v1s.y, v2s.y)
+    val ymin = ys.minOrNull()!!
+    val ymax = ys.maxOrNull()!!
+
+    operator fun DoubleArray.get(x: Int, y: Int) = get(y * width + x)
+    operator fun DoubleArray.set(x: Int, y: Int, value: Double) = set(y * width + x, value)
+
+    for (x in ceil(xmin).toInt()..xmax.toInt()) {
+        if (x !in 0 until this.width) continue
+        for (y in ceil(ymin).toInt()..ymax.toInt()) {
+            if (y !in 0 until this.height) continue
+
+            val baryScreen = barycentric(Vec3D(x.toDouble(), y.toDouble(), 0.0), v0s, v1s, v2s)
+            if (baryScreen.x < 0 || baryScreen.y < 0 || baryScreen.z < 0) continue
+
+            var baryClip = Vec3D(baryScreen.x / v0.w, baryScreen.y / v1.w, baryScreen.z / v2.w)
+            baryClip /= baryClip.x + baryClip.y + baryClip.z
+
+            val z = v0.z * baryClip.x + v1.z * baryClip.y + v2.z * baryClip.z
+            if (zbuffer[x, y] > z) {
+                zbuffer[x, y] = z
+            }
+        }
+    }
+}
+
 fun ImagePlus.line(x0: Int, y0: Int, x1: Int, y1: Int, color: Int) {
     var steep = false
     var _x0 = x0

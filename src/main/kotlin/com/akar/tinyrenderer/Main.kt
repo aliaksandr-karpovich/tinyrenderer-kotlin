@@ -75,6 +75,11 @@ fun render(
     shader.viewport = viewport(imageWidth.toDouble(), imageHeight.toDouble())
     shader.projection = perspective(FOV, imageWidth.toDouble() / imageHeight, 0.1, 10.0)
     shader.campos = camPos
+
+    val shadowMapWidth = imageWidth
+    val shadowMapHeight = imageHeight
+    shader.shadowMapWidth = shadowMapWidth
+    shader.shadowMapHeight = shadowMapHeight
     for (i in 0 until CIRCLE_SECTIONS) {
         val start = System.currentTimeMillis()
         val zbuffer = DoubleArray(imageHeight * imageWidth) { Double.POSITIVE_INFINITY }
@@ -90,11 +95,32 @@ fun render(
         transfer[3][0] = 0.0
         transfer[3][1] = 0.0
         transfer[3][2] = 1.25
+
+        val lightPosition = lightRotation * Vec3D(0.0, 0.0, 1.25)
+        val lightView = lookat(lightPosition, focus, up)
+        val lightProjection = perspective(FOV, shadowMapWidth.toDouble() / shadowMapHeight, 0.1, 10.0)
+
+        val shadowShader = LightShader()
+        shadowShader.model = modelRotation
+        shadowShader.view = lightView
+        shadowShader.projection = lightProjection
+        shadowShader.viewport = viewport(shadowMapWidth.toDouble(), shadowMapHeight.toDouble())
+        shadowShader.load(model.vertices)
+        shadowShader.vertex()
+        val shadowMap = DoubleArray(shadowMapHeight * shadowMapWidth) { Double.POSITIVE_INFINITY }
+        for (obj in model.objects.values) {
+            val faces = shadowShader.clipFaces(obj.triangles)
+            faces.forEach {
+                image.processor.depthTriangle(it, shadowMap, shadowShader)
+            }
+        }
+
         shader.model = modelRotation
         shader.load(model.vertices, model.vertexNormals, model.tVertices)
         shader.vertex()
-        shader.lightPos = lightRotation * Vec3D(0.0, 0.0, 1.25)
-//        shader.lightPos =  Vec3D(-1.0, 0.0, 0.0)
+        shader.lightPos = lightPosition
+        shader.lightSpace = lightProjection * lightView
+        shader.shadowMap = shadowMap
         for (obj in model.objects.values) {
             shader.material = model.materials[obj.material]!!
             val faces = shader.clipFaces(obj.triangles)
@@ -104,8 +130,6 @@ fun render(
                 }
             }
         }
-
-//        ligtRotarion
 
         lightShader.model = lightRotation * transfer.transpose()
         lightShader.load(light.vertices)

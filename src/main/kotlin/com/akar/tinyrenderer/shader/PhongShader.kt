@@ -35,6 +35,11 @@ class PhongShader : Shader {
     var lightDir = Vec3D(.0, .0, 1.0)
 
     var lightPos = Vec3D(0.0, 0.0, 3.0)
+    var lightSpace = Matrix(4)
+    var shadowMap: DoubleArray = doubleArrayOf()
+    var shadowMapWidth = 0
+    var shadowMapHeight = 0
+    var shadowBias = 0.003
 
     var worldCoords = listOf<Vec3D>()
     var MIT = Matrix()
@@ -68,6 +73,8 @@ class PhongShader : Shader {
         val fragmentPos = worldCoords[face.vertex[0]] * bary.x + worldCoords[face.vertex[1]] * bary.y + worldCoords[face.vertex[2]] * bary.z
         val l = (lightPos - fragmentPos).normalize()
 
+        val shadow = shadowIntensity(fragmentPos)
+
         val edge1 = v1 - v0
         val edge2 = v2 - v0
         val duv1 = uv1 - uv0
@@ -88,12 +95,14 @@ class PhongShader : Shader {
 
         val n = (TBN * tnormal).normalize()
 
-        val diffIntensity = max(n * l, 0.25)
+        val ambient = 0.25
+        val diffIntensity = ambient + max(n * l, 0.0) * shadow
 
         val spec = material.spec(pt.x, pt.y)
         val r = (n * (n * l) * 2.0 - l).normalize()
         var specIntensity = max(r * (campos - fragmentPos), 0.0).pow(spec)
         if (n * r < 0) specIntensity = 0.0
+        specIntensity *= shadow
 
 
         val diffColor = Color(material[pt.x, pt.y])
@@ -103,5 +112,38 @@ class PhongShader : Shader {
                 min(diffColor.blue * resIntensity, 255.0).toInt()).rgb
 
         return color
+    }
+
+    private fun shadowIntensity(fragmentPos: Vec3D): Double {
+        if (shadowMapWidth == 0 || shadowMapHeight == 0 || shadowMap.isEmpty()) return 1.0
+
+        val fragmentLightClip = lightSpace.homohenTimes(fragmentPos)
+        val fragmentLightNdc = fragmentLightClip.toVec3D()
+
+        if (fragmentLightNdc.x !in -1.0..1.0 || fragmentLightNdc.y !in -1.0..1.0 || fragmentLightNdc.z !in 0.0..1.0) {
+            return 1.0
+        }
+
+        val sx = ((fragmentLightNdc.x + 1) * 0.5 * (shadowMapWidth - 1)).toInt()
+        val sy = ((fragmentLightNdc.y + 1) * 0.5 * (shadowMapHeight - 1)).toInt()
+
+        var litSamples = 0
+        var samples = 0
+        for (dy in -1..1) {
+            for (dx in -1..1) {
+                val px = (sx + dx).coerceIn(0, shadowMapWidth - 1)
+                val py = (sy + dy).coerceIn(0, shadowMapHeight - 1)
+                val shadowMapDepth = shadowMap[py * shadowMapWidth + px]
+                if (shadowMapDepth.isInfinite()) {
+                    litSamples++
+                } else if (fragmentLightNdc.z - shadowBias <= shadowMapDepth) {
+                    litSamples++
+                }
+                samples++
+            }
+        }
+
+        val visibility = litSamples.toDouble() / samples
+        return 0.2 + 0.8 * visibility
     }
 }
