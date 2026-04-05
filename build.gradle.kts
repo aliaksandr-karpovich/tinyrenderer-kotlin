@@ -1,11 +1,16 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
+val kotlinVersion = "2.3.20"
+val coroutinesVersion = "1.10.2"
+val imagejVersion = "1.54i"
+val tornadofxVersion = "1.7.20"
+
 plugins {
     id("java")
     id("application")
-    kotlin("jvm") version "2.3.10"
-    kotlin("kapt") version "2.3.10"
+    kotlin("jvm") version "2.3.20"
+    kotlin("kapt") version "2.3.20"
 
     id("org.openjfx.javafxplugin") version "0.1.0"
 }
@@ -38,9 +43,9 @@ repositories {
 dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
-    implementation("net.imagej:ij:1.54i")
-    implementation("no.tornado:tornadofx:1.7.20") {
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
+    implementation("net.imagej:ij:$imagejVersion")
+    implementation("no.tornado:tornadofx:$tornadofxVersion") {
         exclude("org.jetbrains.kotlin")
     }
 }
